@@ -85,14 +85,31 @@ const getHomePayload = () => {
 const handleCreateHome = async (event) => {
   event.preventDefault();
   setStatus("");
-  saveHomeButton.disabled = true;
+  
+  // Disable entire form to prevent duplicate submissions
+  const inputs = homeForm.querySelectorAll("input, select, button");
+  inputs.forEach(input => {
+    input.disabled = true;
+  });
   saveHomeButton.textContent = "Creating...";
 
   const payload = getHomePayload();
 
+  // Validate address
+  if (!payload.address) {
+    setStatus("Address is required", "error");
+    inputs.forEach(input => {
+      input.disabled = false;
+    });
+    saveHomeButton.textContent = "Create home";
+    return;
+  }
+
   const { error } = await supabase.from("homes").insert(payload);
 
-  saveHomeButton.disabled = false;
+  inputs.forEach(input => {
+    input.disabled = false;
+  });
   saveHomeButton.textContent = "Create home";
 
   if (error) {
@@ -109,7 +126,7 @@ const initDashboard = async () => {
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
-    window.location.href = "/";
+    window.location.href = "./index.html";
     return;
   }
 
@@ -119,7 +136,7 @@ const initDashboard = async () => {
 
 logoutButton.addEventListener("click", async () => {
   await supabase.auth.signOut();
-  window.location.href = "/";
+  window.location.href = "./index.html";
 });
 
 homeForm.addEventListener("submit", handleCreateHome);
