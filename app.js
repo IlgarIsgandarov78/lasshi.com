@@ -5,16 +5,6 @@ const registerForm = document.getElementById("registerForm");
 const tabs = document.querySelectorAll(".tab");
 
 /**
- * Validates email format
- * @param {string} email - Email to validate
- * @returns {boolean} Whether email is valid
- */
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-/**
  * Shows login form and hides register form
  */
 window.showLogin = function () {
@@ -37,35 +27,35 @@ window.showRegister = function () {
 };
 
 /**
- * Handles user login
+ * Validates email format
+ * @param {string} email - Email to validate
+ * @returns {boolean} True if valid email
  */
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 if (loginForm) {
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const emailInput = loginForm.querySelector('input[type="email"]');
-    const passwordInput = loginForm.querySelector('input[type="password"]');
+    const email = loginForm.querySelector('input[type="email"]').value.trim();
+    const password = loginForm.querySelector('input[type="password"]').value;
     const submitButton = loginForm.querySelector('button[type="submit"]');
-    
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
 
-    // Validation
     if (!email || !password) {
       alert("Please fill in all fields");
       return;
     }
-
-    if (!isValidEmail(email)) {
+        if (!isValidEmail(email)) {
       alert("Please enter a valid email address");
       return;
     }
 
-    // Disable form during submission
-    const inputs = loginForm.querySelectorAll("input, button");
-    inputs.forEach(input => {
-      input.disabled = true;
-    });
+    // Disable button during submission
+    submitButton.disabled = true;
+    const originalText = submitButton.textContent;
     submitButton.textContent = "Logging in...";
 
     try {
@@ -83,31 +73,20 @@ if (loginForm) {
     } catch (err) {
       alert("An unexpected error occurred. Please try again.");
     } finally {
-      inputs.forEach(input => {
-        input.disabled = false;
-      });
-      submitButton.textContent = "Login";
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
     }
   });
 }
-
-/**
- * Handles user registration
- */
 if (registerForm) {
   registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const fullNameInput = registerForm.querySelector('input[type="text"]');
-    const emailInput = registerForm.querySelector('input[type="email"]');
-    const passwordInput = registerForm.querySelector('input[type="password"]');
+    const fullName = registerForm.querySelector('input[type="text"]').value.trim();
+    const email = registerForm.querySelector('input[type="email"]').value.trim();
+    const password = registerForm.querySelector('input[type="password"]').value;
     const submitButton = registerForm.querySelector('button[type="submit"]');
-    
-    const fullName = fullNameInput.value.trim();
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
 
-    // Validation
     if (!fullName || !email || !password) {
       alert("Please fill in all fields");
       return;
@@ -127,12 +106,9 @@ if (registerForm) {
       alert("Password must be at least 6 characters");
       return;
     }
-
-    // Disable form during submission
-    const inputs = registerForm.querySelectorAll("input, button");
-    inputs.forEach(input => {
-      input.disabled = true;
-    });
+    // Disable button during submission
+    submitButton.disabled = true;
+    const originalText = submitButton.textContent;
     submitButton.textContent = "Creating account...";
 
     try {
@@ -161,10 +137,11 @@ if (registerForm) {
     } catch (err) {
       alert("An unexpected error occurred. Please try again.");
     } finally {
-      inputs.forEach(input => {
-        input.disabled = false;
-      });
-      submitButton.textContent = "Create account";
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
     }
   });
 }
+
+    
+    
