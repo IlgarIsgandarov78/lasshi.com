@@ -21,7 +21,7 @@ const setStatus = (message, type = "") => {
   if (type === "success") {
     setTimeout(() => {
       homeStatus.textContent = "";
-      homeStatus.className = "";
+      homeStatus.className = "status-message";
     }, 3000);
   }
 };
@@ -52,8 +52,8 @@ const validateHomePayload = (payload) => {
     throw new Error("Property type is required");
   }
   
-  if (payload.year_built < 1800 || payload.year_built > currentYear) {
-    throw new Error(`Year built must be between 1800 and ${currentYear}`);
+  if (payload.year_built < 1600 || payload.year_built > currentYear) {
+    throw new Error(`Year built must be between 1600 and ${currentYear}`);
   }
   
   if (payload.square_meters <= 0) {
@@ -123,6 +123,7 @@ const loadHomes = async () => {
     homesList.replaceChildren();
     const emptyState = document.createElement("p");
     emptyState.className = "empty-state";
+    emptyState.textContent = "Could not load homes yet.";
     homesList.append(emptyState);
     setStatus(`Database error: ${error.message}`, "error");
     return;
