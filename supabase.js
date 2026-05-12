@@ -1,13 +1,21 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+// Get configuration from environment variables
 const env = import.meta.env ?? {};
-const browserConfig = globalThis.LASSHI_SUPABASE_CONFIG ?? {};
+const SUPABASE_URL = env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY;
 
-const SUPABASE_URL = env.VITE_SUPABASE_URL ?? browserConfig.url;
-const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY ?? browserConfig.anonKey;
-
+// Validate that required configuration is present
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error("Missing Supabase configuration. Check your .env file.");
+  console.error("Missing Supabase configuration");
+  throw new Error(
+    "Missing Supabase configuration. Please check your .env file and ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set."
+  );
 }
 
+/**
+ * Supabase client instance
+ * Only uses environment variables for security
+ * @type {import('@supabase/supabase-js').SupabaseClient}
+ */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
