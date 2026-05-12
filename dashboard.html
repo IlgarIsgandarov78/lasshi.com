@@ -61,6 +61,153 @@
         <p class="empty-state">No homes added yet.</p>
       </div>
     </section>
+
+    <section class="panel room-panel">
+      <h2>Rooms</h2>
+      <p class="section-copy">Rooms are the foundation for future photos, documents, repairs, and timeline events.</p>
+
+      <form id="roomForm" class="form room-form">
+        <label>
+          Home
+          <select id="roomHomeId" required>
+            <option value="">Select home</option>
+          </select>
+        </label>
+
+        <label>
+          Room name
+          <input id="roomName" type="text" placeholder="Kitchen" required />
+        </label>
+
+        <label>
+          Room type
+          <select id="roomType" required>
+            <option value="">Select type</option>
+            <option value="Kitchen">Kitchen</option>
+            <option value="Bathroom">Bathroom</option>
+            <option value="Living room">Living room</option>
+            <option value="Bedroom">Bedroom</option>
+            <option value="Electrical room">Electrical room</option>
+            <option value="Utility room">Utility room</option>
+            <option value="Hallway">Hallway</option>
+            <option value="Storage">Storage</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <button id="saveRoom" type="submit">Create room</button>
+        <p id="roomStatus" class="status-message" role="status"></p>
+      </form>
+
+      <div id="roomsList" class="rooms-list">
+        <p class="empty-state">No rooms added yet.</p>
+      </div>
+    </section>
+
+    <section class="panel documentation-panel">
+      <h2>Upload documentation</h2>
+      <p class="section-copy">Attach photos, PDFs, receipts, manuals, and drawings to the room where they belong.</p>
+
+      <form id="documentForm" class="form document-form">
+        <label>
+          Home
+          <select id="documentHomeId" required>
+            <option value="">Select home</option>
+          </select>
+        </label>
+
+        <label>
+          Room
+          <select id="documentRoomId" required>
+            <option value="">Select room</option>
+          </select>
+        </label>
+
+        <label>
+          Type
+          <select id="documentType" required>
+            <option value="">Select type</option>
+            <option value="Photo">Photo</option>
+            <option value="PDF">PDF</option>
+            <option value="Receipt">Receipt</option>
+            <option value="Manual">Manual</option>
+            <option value="Drawing">Drawing</option>
+            <option value="Certificate">Certificate</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <label>
+          Title
+          <input id="documentTitle" type="text" placeholder="Heated floor installation photo" />
+        </label>
+
+        <label class="file-field">
+          File
+          <input id="documentFile" type="file" accept="image/*,.pdf,application/pdf" required />
+        </label>
+
+        <button id="uploadDocument" type="submit">Upload</button>
+        <p id="documentStatus" class="status-message" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel timeline-panel">
+      <h2>Timeline</h2>
+      <p class="section-copy">Record renovations, repairs, installations, inspections, and other changes as the living history of the home.</p>
+
+      <form id="timelineForm" class="form timeline-form">
+        <label>
+          Home
+          <select id="timelineHomeId" required>
+            <option value="">Select home</option>
+          </select>
+        </label>
+
+        <label>
+          Room
+          <select id="timelineRoomId">
+            <option value="">Whole home</option>
+          </select>
+        </label>
+
+        <label>
+          Date
+          <input id="timelineDate" type="date" required />
+        </label>
+
+        <label>
+          Type
+          <select id="timelineType" required>
+            <option value="">Select type</option>
+            <option value="Renovation">Renovation</option>
+            <option value="Installation">Installation</option>
+            <option value="Repair">Repair</option>
+            <option value="Inspection">Inspection</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Permit">Permit</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <label class="timeline-title-field">
+          Title
+          <input id="timelineTitle" type="text" placeholder="Bathroom renovated" required />
+        </label>
+
+        <label class="timeline-description-field">
+          Notes
+          <textarea id="timelineDescription" rows="3" placeholder="Optional context, contractor, location, or evidence details"></textarea>
+        </label>
+
+        <button id="saveTimelineEvent" type="submit">Add event</button>
+        <p id="timelineStatus" class="status-message" role="status"></p>
+      </form>
+
+      <div id="timelineList" class="timeline-list">
+        <p class="empty-state">No timeline events yet.</p>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="dashboard.js"></script>
