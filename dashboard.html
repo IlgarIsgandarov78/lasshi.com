@@ -6,23 +6,63 @@
   <title>Lasshi Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <h1>Welcome to Lasshi</h1>
-  <button id="logout">Log out</button>
+<body class="dashboard-page">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Digital Home Twin</p>
+      <h1>My homes</h1>
+    </div>
+    <button id="logout" class="secondary-button">Log out</button>
+  </header>
 
-  <script type="module">
-    import { supabase } from "./supabase.js";
+  <main class="dashboard-layout">
+    <section class="panel">
+      <h2>Add home</h2>
+      <p class="section-copy">Create the root property record for layouts, documents, repairs, permits, and future sales history.</p>
 
-    const { data, error } = await supabase.auth.getUser();
+      <form id="homeForm" class="form home-form">
+        <label>
+          Address
+          <input id="homeAddress" type="text" placeholder="Exampleveien 12" autocomplete="street-address" required />
+        </label>
 
-    if (error || !data.user) {
-      window.location.href = "/";
-    }
+        <label>
+          Property type
+          <select id="propertyType" required>
+            <option value="">Select type</option>
+            <option value="House">House</option>
+            <option value="Apartment">Apartment</option>
+            <option value="Cabin">Cabin</option>
+            <option value="Townhouse">Townhouse</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
 
-    document.getElementById("logout").onclick = async () => {
-      await supabase.auth.signOut();
-      window.location.href = "/";
-    };
-  </script>
+        <div class="form-grid">
+          <label>
+            Year built
+            <input id="yearBuilt" type="number" min="1600" max="2100" placeholder="1998" required />
+          </label>
+
+          <label>
+            Square meters
+            <input id="squareMeters" type="number" min="1" step="0.1" placeholder="120" required />
+          </label>
+        </div>
+
+        <button id="saveHome" type="submit">Create home</button>
+        <p id="homeStatus" class="status-message" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Home objects</h2>
+      <div id="homesList" class="homes-list">
+        <p class="empty-state">No homes added yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="dashboard.js"></script>
 </body>
 </html>

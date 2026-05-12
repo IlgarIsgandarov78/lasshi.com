@@ -1,7 +1,10 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const env = import.meta.env ?? {};
+const browserConfig = globalThis.LASSHI_SUPABASE_CONFIG ?? {};
+
+const SUPABASE_URL = env.VITE_SUPABASE_URL ?? browserConfig.url;
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY ?? browserConfig.anonKey;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error("Missing Supabase configuration. Check your .env file.");
