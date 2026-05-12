@@ -1,44 +1,33 @@
-// app.js
 import { supabase } from "./supabase.js";
 
-/* =========================================================
-   TAB SWITCHING (EXPOSED TO WINDOW FOR onclick)
-   ========================================================= */
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+const tabs = document.querySelectorAll(".tab");
 
 window.showLogin = function () {
-  document.getElementById("loginForm").classList.remove("hidden");
-  document.getElementById("registerForm").classList.add("hidden");
+  loginForm?.classList.remove("hidden");
+  registerForm?.classList.add("hidden");
 
-  const tabs = document.querySelectorAll(".tab");
-  tabs[0].classList.add("active");
-  tabs[1].classList.remove("active");
+  tabs[0]?.classList.add("active");
+  tabs[1]?.classList.remove("active");
 };
 
 window.showRegister = function () {
-  document.getElementById("registerForm").classList.remove("hidden");
-  document.getElementById("loginForm").classList.add("hidden");
+  registerForm?.classList.remove("hidden");
+  loginForm?.classList.add("hidden");
 
-  const tabs = document.querySelectorAll(".tab");
-  tabs[1].classList.add("active");
-  tabs[0].classList.remove("active");
+  tabs[1]?.classList.add("active");
+  tabs[0]?.classList.remove("active");
 };
 
-/* =========================================================
-   LOGIN
-   ========================================================= */
-
-const loginForm = document.getElementById("loginForm");
-
 if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
     const email = loginForm.querySelector('input[type="email"]').value.trim();
-    const password = loginForm
-      .querySelector('input[type="password"]')
-      .value;
+    const password = loginForm.querySelector('input[type="password"]').value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -48,30 +37,17 @@ if (loginForm) {
       return;
     }
 
-    // ✅ Login successful
     window.location.href = "/dashboard.html";
   });
 }
 
-/* =========================================================
-   REGISTER
-   ========================================================= */
-
-const registerForm = document.getElementById("registerForm");
-
 if (registerForm) {
-  registerForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-    const fullName = registerForm
-      .querySelector('input[type="text"]')
-      .value.trim();
-    const email = registerForm
-      .querySelector('input[type="email"]')
-      .value.trim();
-    const password = registerForm
-      .querySelector('input[type="password"]')
-      .value;
+    const fullName = registerForm.querySelector('input[type="text"]').value.trim();
+    const email = registerForm.querySelector('input[type="email"]').value.trim();
+    const password = registerForm.querySelector('input[type="password"]').value;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -88,3 +64,12 @@ if (registerForm) {
       return;
     }
 
+    if (data.session) {
+      window.location.href = "/dashboard.html";
+      return;
+    }
+
+    alert("Account created. Please check your email to confirm your account.");
+    window.showLogin();
+  });
+}
