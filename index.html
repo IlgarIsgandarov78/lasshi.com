@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi – Digital Home Twin</title>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -12,28 +13,50 @@
     <p class="tagline">The digital memory of your home</p>
 
     <div class="card">
+      <!-- Tabs -->
       <div class="tabs">
         <button class="tab active" onclick="showLogin()">Login</button>
         <button class="tab" onclick="showRegister()">Register</button>
       </div>
 
-      <!-- Login -->
+      <!-- Login Form -->
       <form id="loginForm" class="form">
-        <input type="email" placeholder="Email" required />
-        <input type="password" placeholder="Password" required />
+        <input
+          type="email"
+          placeholder="Email"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          required
+        />
         <button type="submit">Login</button>
       </form>
 
-      <!-- Register -->
+      <!-- Register Form -->
       <form id="registerForm" class="form hidden">
-        <input type="text" placeholder="Full name" required />
-        <input type="email" placeholder="Email" required />
-        <input type="password" placeholder="Password" required />
+        <input
+          type="text"
+          placeholder="Full name"
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          required
+        />
         <button type="submit">Create account</button>
       </form>
     </div>
   </div>
 
+  <!-- IMPORTANT: must be type="module" -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
