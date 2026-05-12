@@ -22,36 +22,52 @@
 
       <!-- Login Form -->
       <form id="loginForm" class="form">
-        <input
-          type="email"
-          placeholder="Email"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-        />
+        <label>
+          Email
+          <input
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            placeholder="Your password"
+            required
+          />
+        </label>
         <button type="submit">Login</button>
       </form>
 
       <!-- Register Form -->
       <form id="registerForm" class="form hidden">
-        <input
-          type="text"
-          placeholder="Full name"
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-        />
+        <label>
+          Full name
+          <input
+            type="text"
+            placeholder="John Doe"
+            required
+          />
+        </label>
+        <label>
+          Email
+          <input
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            placeholder="At least 6 characters"
+            required
+            minlength="6"
+          />
+        </label>
         <button type="submit">Create account</button>
       </form>
     </div>
