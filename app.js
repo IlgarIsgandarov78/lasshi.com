@@ -1,17 +1,28 @@
-const loginForm = document.getElementById("loginForm");
+import { supabase } from "./supabase.js";
+
 const registerForm = document.getElementById("registerForm");
-const tabs = document.querySelectorAll(".tab");
 
-function showLogin() {
-  loginForm.classList.remove("hidden");
-  registerForm.classList.add("hidden");
-  tabs[0].classList.add("active");
-  tabs[1].classList.remove("active");
-}
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-function showRegister() {
-  registerForm.classList.remove("hidden");
-  loginForm.classList.add("hidden");
-  tabs[1].classList.add("active");
-  tabs[0].classList.remove("active");
-}
+  const name = registerForm.querySelector('input[type="text"]').value;
+  const email = registerForm.querySelector('input[type="email"]').value;
+  const password = registerForm.querySelector('input[type="password"]').value;
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: name
+      }
+    }
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Check your email to confirm your account.");
+  }
+});
+
