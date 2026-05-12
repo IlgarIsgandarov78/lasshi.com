@@ -19,3 +19,4 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
  * @type {import('@supabase/supabase-js').SupabaseClient}
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
