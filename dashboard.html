@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lasshi Dashboard</title>
+</head>
+<body>
+  <h1>Welcome to Lasshi</h1>
+  <button id="logout">Log out</button>
+
+  <script type="module">
+    import { supabase } from "./supabase.js";
+
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+      window.location.href = "/";
+    }
+
+    document.getElementById("logout").onclick = async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    };
+  </script>
+</body>
+</html>
