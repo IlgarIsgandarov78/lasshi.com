@@ -47,8 +47,8 @@ const validateHomePayload = (payload) => {
   if (!payload.address || payload.address.length < 3) {
     throw new Error("Address must be at least 3 characters");
   }
-  
-  if (!payload.property_type) {
+
+    if (!payload.property_type) {
     throw new Error("Property type is required");
   }
   
@@ -123,7 +123,6 @@ const loadHomes = async () => {
     homesList.replaceChildren();
     const emptyState = document.createElement("p");
     emptyState.className = "empty-state";
-    emptyState.textContent = "Could not load homes.";
     homesList.append(emptyState);
     setStatus(`Database error: ${error.message}`, "error");
     return;
@@ -237,3 +236,6 @@ logoutButton.addEventListener("click", async () => {
 homeForm.addEventListener("submit", handleCreateHome);
 
 initDashboard();
+
+
+
