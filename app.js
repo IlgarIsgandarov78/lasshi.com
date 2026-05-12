@@ -27,6 +27,11 @@ if (loginForm) {
     const email = loginForm.querySelector('input[type="email"]').value.trim();
     const password = loginForm.querySelector('input[type="password"]').value;
 
+    if (!email || !password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -37,7 +42,7 @@ if (loginForm) {
       return;
     }
 
-    window.location.href = "/dashboard.html";
+    window.location.href = "./dashboard.html";
   });
 }
 
@@ -48,6 +53,16 @@ if (registerForm) {
     const fullName = registerForm.querySelector('input[type="text"]').value.trim();
     const email = registerForm.querySelector('input[type="email"]').value.trim();
     const password = registerForm.querySelector('input[type="password"]').value;
+
+    if (!fullName || !email || !password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -65,7 +80,7 @@ if (registerForm) {
     }
 
     if (data.session) {
-      window.location.href = "/dashboard.html";
+      window.location.href = "./dashboard.html";
       return;
     }
 
