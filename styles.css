@@ -47,7 +47,7 @@ body {
   background: #eee;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .tab:hover {
@@ -69,8 +69,7 @@ body {
   margin-bottom: 0.8rem;
   border-radius: 6px;
   border: 1px solid #ccc;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  font-size: 1rem;
+  transition: border-color 0.2s ease;
 }
 
 .form input:focus {
@@ -79,10 +78,8 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.form input:disabled {
-  background-color: #f0f0f0;
-  cursor: not-allowed;
-  opacity: 0.7;
+.form input:invalid {
+  border-color: #dc2626;
 }
 
 .form label {
@@ -101,8 +98,7 @@ body {
   border-radius: 6px;
   border: 1px solid #ccc;
   background: white;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  font-size: 1rem;
+  transition: border-color 0.2s ease;
 }
 
 .form select:focus {
@@ -112,7 +108,8 @@ body {
 }
 
 .form button,
-.secondary-button {
+.secondary-button,
+.delete-button {
   padding: 0.7rem;
   border-radius: 6px;
   border: none;
@@ -120,22 +117,27 @@ body {
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .form button:hover:not(:disabled) {
   background: #1e4ed8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-
-.form button:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .form button:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.delete-button {
+  background: #dc2626;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.delete-button:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
 .hidden {
@@ -212,7 +214,7 @@ body {
   margin: 0.8rem 0 0;
   color: #64748b;
   font-size: 0.9rem;
-  animation: slideIn 0.3s ease;
+  animation: slideIn 0.2s ease;
 }
 
 @keyframes slideIn {
@@ -228,12 +230,10 @@ body {
 
 .status-message.error {
   color: #b91c1c;
-  font-weight: 500;
 }
 
 .status-message.success {
   color: #047857;
-  font-weight: 500;
 }
 
 .homes-list {
@@ -251,16 +251,11 @@ body {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #f8fafc;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .home-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.home-card > div:first-child {
-  flex: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .home-card h3,
@@ -270,52 +265,22 @@ body {
 
 .home-card h3 {
   font-size: 1rem;
-  color: #172033;
 }
 
 .home-card p {
   margin-top: 0.25rem;
   color: #64748b;
-  font-size: 0.9rem;
 }
 
 .home-card strong {
   white-space: nowrap;
-  color: #2563eb;
-  font-weight: 600;
+  color: #172033;
 }
 
 .home-card-actions {
   display: flex;
   gap: 0.5rem;
-}
-
-.delete-button {
-  padding: 0.5rem 0.75rem;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.delete-button:hover:not(:disabled) {
-  background: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-.delete-button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.delete-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  margin-left: auto;
 }
 
 .empty-state {
@@ -325,7 +290,6 @@ body {
   border-radius: 8px;
   color: #64748b;
   background: #f8fafc;
-  font-size: 0.95rem;
 }
 
 .secondary-button {
@@ -335,7 +299,6 @@ body {
 
 .secondary-button:hover:not(:disabled) {
   background: #cbd5e1;
-  transform: translateY(-1px);
 }
 
 .secondary-button:disabled {
@@ -372,6 +335,7 @@ body {
   }
 
   .delete-button {
+    margin-left: 0;
     width: 100%;
   }
 }
