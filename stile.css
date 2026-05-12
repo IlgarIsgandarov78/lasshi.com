@@ -1,0 +1,84 @@
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fa;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  text-align: center;
+}
+
+.logo {
+  font-size: 2.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.tagline {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: white;
+  padding: 2rem;
+  width: 320px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.7rem;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tab.active {
+  background: #2563eb;
+  color: white;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form input {
+  padding: 0.7rem;
+  margin-bottom: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.form button {
+  padding: 0.7rem;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form button:hover {
+  background: #1e4ed8;
+}
+
+.hidden {
+  display: none;
+}
