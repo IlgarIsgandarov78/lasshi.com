@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -16,6 +16,15 @@
   </header>
 
   <main class="app-shell">
+    <section class="search-panel">
+      <div>
+        <label for="globalSearch" class="search-label">Search</label>
+        <input id="globalSearch" type="search" placeholder="Search homes, rooms, documents, history, and infrastructure" autocomplete="off" />
+      </div>
+      <button id="clearSearch" class="secondary-button compact-button" type="button">Clear</button>
+      <div id="searchResults" class="stack-list hidden"></div>
+    </section>
+
     <section id="homesView" class="app-view active">
       <div class="view-toolbar">
         <div>
@@ -57,6 +66,17 @@
           <span>events</span>
         </div>
       </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <h3>Home health</h3>
+            <p id="homeHealthSummary" class="muted"></p>
+          </div>
+          <strong id="homeHealthScore" class="health-score">0%</strong>
+        </div>
+        <div id="homeHealthList" class="health-list"></div>
+      </section>
 
       <section class="content-section">
         <div class="section-heading">
@@ -293,6 +313,10 @@
           Notes
           <textarea id="timelineDescription" rows="3" placeholder="Optional context, contractor, location, or evidence details"></textarea>
         </label>
+        <label>
+          Linked documents
+          <select id="timelineDocumentIds" multiple size="4"></select>
+        </label>
         <button id="saveTimelineEvent" class="primary-button" type="submit">Add event</button>
         <p id="timelineStatus" class="status-message" role="status"></p>
       </form>
@@ -365,6 +389,6 @@
     </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=5"></script>
+  <script type="module" src="dashboard.js?v=6"></script>
 </body>
 </html>

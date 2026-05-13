@@ -521,3 +521,88 @@ using (
       and homes.owner_id = auth.uid()
   )
 );
+
+create table if not exists public.timeline_event_documents (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.homes(id) on delete cascade,
+  event_id uuid not null references public.timeline_events(id) on delete cascade,
+  document_id uuid not null references public.room_documents(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (event_id, document_id)
+);
+
+create index if not exists timeline_event_documents_home_id_idx on public.timeline_event_documents(home_id);
+create index if not exists timeline_event_documents_event_id_idx on public.timeline_event_documents(event_id);
+create index if not exists timeline_event_documents_document_id_idx on public.timeline_event_documents(document_id);
+create index if not exists timeline_event_documents_owner_id_idx on public.timeline_event_documents(owner_id);
+
+alter table public.timeline_event_documents enable row level security;
+
+drop policy if exists "Users can read timeline evidence for their own homes" on public.timeline_event_documents;
+create policy "Users can read timeline evidence for their own homes"
+on public.timeline_event_documents
+for select
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.timeline_events
+    join public.homes on homes.id = timeline_events.home_id
+    where timeline_events.id = timeline_event_documents.event_id
+      and timeline_events.home_id = timeline_event_documents.home_id
+      and timeline_events.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+  and exists (
+    select 1
+    from public.room_documents
+    where room_documents.id = timeline_event_documents.document_id
+      and room_documents.home_id = timeline_event_documents.home_id
+      and room_documents.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create timeline evidence for their own homes" on public.timeline_event_documents;
+create policy "Users can create timeline evidence for their own homes"
+on public.timeline_event_documents
+for insert
+to authenticated
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.timeline_events
+    join public.homes on homes.id = timeline_events.home_id
+    where timeline_events.id = timeline_event_documents.event_id
+      and timeline_events.home_id = timeline_event_documents.home_id
+      and timeline_events.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+  and exists (
+    select 1
+    from public.room_documents
+    where room_documents.id = timeline_event_documents.document_id
+      and room_documents.home_id = timeline_event_documents.home_id
+      and room_documents.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can delete timeline evidence for their own homes" on public.timeline_event_documents;
+create policy "Users can delete timeline evidence for their own homes"
+on public.timeline_event_documents
+for delete
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.timeline_events
+    join public.homes on homes.id = timeline_events.home_id
+    where timeline_events.id = timeline_event_documents.event_id
+      and timeline_events.home_id = timeline_event_documents.home_id
+      and timeline_events.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);

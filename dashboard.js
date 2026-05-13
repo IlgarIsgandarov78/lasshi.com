@@ -10,12 +10,18 @@ const views = {
 };
 
 const homesGrid = document.getElementById("homesGrid");
+const globalSearchInput = document.getElementById("globalSearch");
+const clearSearchButton = document.getElementById("clearSearch");
+const searchResults = document.getElementById("searchResults");
 const homeDetailMeta = document.getElementById("homeDetailMeta");
 const homeDetailTitle = document.getElementById("homeDetailTitle");
 const homeDetailInfo = document.getElementById("homeDetailInfo");
 const homeRoomCount = document.getElementById("homeRoomCount");
 const homeDocumentCount = document.getElementById("homeDocumentCount");
 const homeEventCount = document.getElementById("homeEventCount");
+const homeHealthScore = document.getElementById("homeHealthScore");
+const homeHealthSummary = document.getElementById("homeHealthSummary");
+const homeHealthList = document.getElementById("homeHealthList");
 const homeRoomsGrid = document.getElementById("homeRoomsGrid");
 const homeDocumentsList = document.getElementById("homeDocumentsList");
 const homeTimelineList = document.getElementById("homeTimelineList");
@@ -66,6 +72,7 @@ const timelineDateInput = document.getElementById("timelineDate");
 const timelineTypeSelect = document.getElementById("timelineType");
 const timelineTitleInput = document.getElementById("timelineTitle");
 const timelineDescriptionInput = document.getElementById("timelineDescription");
+const timelineDocumentSelect = document.getElementById("timelineDocumentIds");
 const timelineStatus = document.getElementById("timelineStatus");
 const saveTimelineEventButton = document.getElementById("saveTimelineEvent");
 
@@ -87,6 +94,7 @@ let homes = [];
 let rooms = [];
 let documents = [];
 let timelineEvents = [];
+let timelineDocumentLinks = [];
 let infrastructureItems = [];
 let selectedHomeId = null;
 let selectedRoomId = null;
@@ -117,6 +125,10 @@ const getDashboardErrorMessage = (error) => {
     return "Infrastructure table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.";
   }
 
+  if (message.includes("timeline_event_documents")) {
+    return "Timeline evidence table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.";
+  }
+
   return message;
 };
 
@@ -131,12 +143,18 @@ const getSelectedRoom = () => rooms.find((room) => room.id === selectedRoomId);
 const getHomeRooms = (homeId) => rooms.filter((room) => room.home_id === homeId);
 const getHomeDocuments = (homeId) => documents.filter((doc) => doc.home_id === homeId);
 const getHomeEvents = (homeId) => timelineEvents.filter((event) => event.home_id === homeId);
+const getHomeInfrastructure = (homeId) => infrastructureItems.filter((item) => item.home_id === homeId);
 const getRoomDocuments = (roomId) => documents.filter((doc) => doc.room_id === roomId);
 const getRoomEvents = (roomId) => timelineEvents.filter((event) => event.room_id === roomId);
 const getRoomInfrastructure = (roomId) => infrastructureItems.filter((item) => item.room_id === roomId);
 const getHomeAddress = (homeId) => homes.find((home) => home.id === homeId)?.address ?? "Unknown home";
 const getRoomName = (roomId) => rooms.find((room) => room.id === roomId)?.name ?? "Whole home";
 const getDocumentTitle = (documentId) => documents.find((doc) => doc.id === documentId)?.title ?? "";
+const getEventDocumentLinks = (eventId) => timelineDocumentLinks.filter((link) => link.event_id === eventId);
+const getEventDocuments = (eventId) => {
+  const eventDocumentIds = new Set(getEventDocumentLinks(eventId).map((link) => link.document_id));
+  return documents.filter((doc) => eventDocumentIds.has(doc.id));
+};
 
 const formatSquareMeters = (value) => {
   const number = Number(value);
@@ -217,6 +235,10 @@ const renderEmptyState = (container, title, detail = "") => {
 
 const createStatLine = (items) => items.filter(Boolean).join(" - ");
 
+const normalizeText = (value) => String(value ?? "").toLowerCase().trim();
+
+const getSelectedValues = (select) => Array.from(select.selectedOptions).map((option) => option.value).filter(Boolean);
+
 const createInfrastructureItem = (item) => {
   const article = document.createElement("article");
   const details = document.createElement("div");
@@ -291,6 +313,7 @@ const createDocumentItem = (doc) => {
 };
 
 const createTimelineItem = (event) => {
+  const linkedDocuments = getEventDocuments(event.id);
   const item = document.createElement("article");
   const details = document.createElement("div");
   const title = document.createElement("h4");
@@ -312,6 +335,27 @@ const createTimelineItem = (event) => {
     description.className = "item-description";
     description.textContent = event.description;
     details.append(description);
+  }
+
+  if (linkedDocuments.length) {
+    const evidence = document.createElement("div");
+    const label = document.createElement("p");
+
+    evidence.className = "evidence-list";
+    label.className = "evidence-label";
+    label.textContent = "Evidence";
+    evidence.append(label);
+
+    for (const doc of linkedDocuments) {
+      const documentButton = document.createElement("button");
+      documentButton.className = "evidence-chip";
+      documentButton.type = "button";
+      documentButton.textContent = doc.title;
+      documentButton.addEventListener("click", () => handleOpenDocument(doc));
+      evidence.append(documentButton);
+    }
+
+    details.append(evidence);
   }
 
   deleteButton.className = "danger-text-button";
@@ -430,6 +474,7 @@ const renderHomeDetail = () => {
   homeRoomCount.textContent = homeRooms.length;
   homeDocumentCount.textContent = homeDocuments.length;
   homeEventCount.textContent = homeEvents.length;
+  renderHomeHealth(home.id);
 
   homeRoomsGrid.replaceChildren();
   if (homeRooms.length) {
@@ -493,6 +538,231 @@ const renderRoomDetail = () => {
   } else {
     renderEmptyState(roomDetailTimeline, "No room history yet");
   }
+};
+
+const createHealthItem = (item) => {
+  const row = document.createElement("article");
+  const marker = document.createElement("span");
+  const details = document.createElement("div");
+  const title = document.createElement("strong");
+  const detail = document.createElement("p");
+
+  row.className = `health-item ${item.ok ? "health-ok" : "health-missing"}`;
+  marker.className = "health-marker";
+  marker.textContent = item.ok ? "OK" : "Missing";
+  title.textContent = item.title;
+  detail.textContent = item.detail;
+
+  details.append(title, detail);
+  row.append(marker, details);
+  return row;
+};
+
+const getHomeHealthItems = (homeId) => {
+  const homeRooms = getHomeRooms(homeId);
+  const homeDocuments = getHomeDocuments(homeId);
+  const homeEvents = getHomeEvents(homeId);
+  const homeInfrastructure = getHomeInfrastructure(homeId);
+  const roomsWithoutDocuments = homeRooms.filter((room) => !getRoomDocuments(room.id).length);
+  const eventsWithoutEvidence = homeEvents.filter((event) => !getEventDocuments(event.id).length);
+  const infrastructureWithoutEvidence = homeInfrastructure.filter((item) => !item.source_document_id);
+  const highRiskWithoutDetail = homeInfrastructure.filter((item) => item.risk_level === "High" && (!item.source_document_id || !item.notes));
+
+  return [
+    {
+      ok: homeRooms.length > 0,
+      title: "Rooms created",
+      detail: homeRooms.length ? `${homeRooms.length} room${homeRooms.length === 1 ? "" : "s"} documented.` : "Add rooms so documents and history have a place to live.",
+    },
+    {
+      ok: homeDocuments.length > 0,
+      title: "Documents uploaded",
+      detail: homeDocuments.length ? `${homeDocuments.length} document${homeDocuments.length === 1 ? "" : "s"} stored.` : "Upload photos, PDFs, receipts, manuals, or drawings.",
+    },
+    {
+      ok: homeRooms.length > 0 && roomsWithoutDocuments.length === 0,
+      title: "Every room has documentation",
+      detail: !homeRooms.length
+        ? "Create rooms before checking room documentation coverage."
+        : roomsWithoutDocuments.length
+          ? `${roomsWithoutDocuments.length} room${roomsWithoutDocuments.length === 1 ? "" : "s"} still need documents.`
+          : "Each room has at least one supporting document.",
+    },
+    {
+      ok: homeEvents.length > 0,
+      title: "Timeline started",
+      detail: homeEvents.length ? `${homeEvents.length} timeline event${homeEvents.length === 1 ? "" : "s"} recorded.` : "Add renovations, repairs, installations, or inspections.",
+    },
+    {
+      ok: homeEvents.length > 0 && eventsWithoutEvidence.length === 0,
+      title: "Timeline has evidence",
+      detail: !homeEvents.length
+        ? "Add timeline events before checking evidence coverage."
+        : eventsWithoutEvidence.length
+          ? `${eventsWithoutEvidence.length} timeline event${eventsWithoutEvidence.length === 1 ? "" : "s"} need linked documents.`
+          : "Timeline events are backed by linked documents.",
+    },
+    {
+      ok: homeInfrastructure.length > 0,
+      title: "Infrastructure recorded",
+      detail: homeInfrastructure.length
+        ? `${homeInfrastructure.length} infrastructure note${homeInfrastructure.length === 1 ? "" : "s"} added.`
+        : "Add hidden systems like water, electricity, heating cables, drainage, or ventilation.",
+    },
+    {
+      ok: homeInfrastructure.length > 0 && infrastructureWithoutEvidence.length === 0,
+      title: "Infrastructure evidence linked",
+      detail: !homeInfrastructure.length
+        ? "Add infrastructure notes before checking evidence coverage."
+        : infrastructureWithoutEvidence.length
+          ? `${infrastructureWithoutEvidence.length} infrastructure note${infrastructureWithoutEvidence.length === 1 ? "" : "s"} need linked evidence.`
+          : "Infrastructure notes are tied to supporting documents.",
+    },
+    {
+      ok: highRiskWithoutDetail.length === 0,
+      title: "High-risk notes are detailed",
+      detail: highRiskWithoutDetail.length
+        ? `${highRiskWithoutDetail.length} high-risk note${highRiskWithoutDetail.length === 1 ? "" : "s"} need evidence and notes.`
+        : "High-risk infrastructure notes have the detail a contractor needs.",
+    },
+  ];
+};
+
+const renderHomeHealth = (homeId) => {
+  const healthItems = getHomeHealthItems(homeId);
+  const completed = healthItems.filter((item) => item.ok).length;
+  const score = Math.round((completed / healthItems.length) * 100);
+
+  homeHealthScore.textContent = `${score}%`;
+  homeHealthSummary.textContent = `${completed} of ${healthItems.length} checks complete.`;
+  homeHealthList.replaceChildren(...healthItems.map(createHealthItem));
+};
+
+const createSearchResultItem = (result) => {
+  const item = document.createElement("article");
+  const details = document.createElement("div");
+  const type = document.createElement("span");
+  const title = document.createElement("h4");
+  const meta = document.createElement("p");
+  const action = document.createElement("button");
+
+  item.className = "list-item search-result";
+  type.className = "result-type";
+  type.textContent = result.type;
+  title.textContent = result.title;
+  meta.textContent = result.meta;
+
+  action.className = "secondary-button compact-button";
+  action.type = "button";
+  action.textContent = result.actionLabel;
+  action.addEventListener("click", result.action);
+
+  details.append(type, title, meta);
+  item.append(details, action);
+  return item;
+};
+
+const getSearchResults = (query) => {
+  const normalizedQuery = normalizeText(query);
+  if (normalizedQuery.length < 2) return [];
+
+  const results = [];
+  const addResult = (result) => {
+    if (normalizeText(result.haystack).includes(normalizedQuery)) results.push(result);
+  };
+
+  for (const home of homes) {
+    addResult({
+      type: "Home",
+      title: home.address,
+      meta: createStatLine([home.property_type, `Built ${home.year_built}`, `${formatSquareMeters(home.square_meters)} m2`]),
+      actionLabel: "Open home",
+      action: () => navigateToHome(home.id),
+      haystack: [home.address, home.property_type, home.year_built, home.square_meters].join(" "),
+    });
+  }
+
+  for (const room of rooms) {
+    addResult({
+      type: "Room",
+      title: room.name,
+      meta: createStatLine([getHomeAddress(room.home_id), room.room_type]),
+      actionLabel: "Open room",
+      action: () => navigateToRoom(room.id),
+      haystack: [room.name, room.room_type, getHomeAddress(room.home_id)].join(" "),
+    });
+  }
+
+  for (const doc of documents) {
+    addResult({
+      type: "Document",
+      title: doc.title,
+      meta: createStatLine([getHomeAddress(doc.home_id), getRoomName(doc.room_id), doc.document_type, doc.file_name]),
+      actionLabel: "Open file",
+      action: () => handleOpenDocument(doc),
+      haystack: [doc.title, doc.document_type, doc.file_name, getHomeAddress(doc.home_id), getRoomName(doc.room_id)].join(" "),
+    });
+  }
+
+  for (const event of timelineEvents) {
+    const linkedDocumentTitles = getEventDocuments(event.id).map((doc) => doc.title).join(" ");
+    addResult({
+      type: "Timeline",
+      title: event.title,
+      meta: createStatLine([getHomeAddress(event.home_id), event.room_id ? getRoomName(event.room_id) : "Whole home", event.event_type]),
+      actionLabel: event.room_id ? "Open room" : "Open home",
+      action: () => (event.room_id ? navigateToRoom(event.room_id) : navigateToHome(event.home_id)),
+      haystack: [
+        event.title,
+        event.description,
+        event.event_type,
+        event.event_date,
+        getHomeAddress(event.home_id),
+        event.room_id ? getRoomName(event.room_id) : "Whole home",
+        linkedDocumentTitles,
+      ].join(" "),
+    });
+  }
+
+  for (const item of infrastructureItems) {
+    addResult({
+      type: "Infrastructure",
+      title: item.title,
+      meta: createStatLine([getHomeAddress(item.home_id), getRoomName(item.room_id), item.infrastructure_type, `${item.risk_level} risk`]),
+      actionLabel: "Open room",
+      action: () => navigateToRoom(item.room_id),
+      haystack: [
+        item.title,
+        item.location_note,
+        item.notes,
+        item.infrastructure_type,
+        item.risk_level,
+        item.confidence_level,
+        getHomeAddress(item.home_id),
+        getRoomName(item.room_id),
+        getDocumentTitle(item.source_document_id),
+      ].join(" "),
+    });
+  }
+
+  return results.slice(0, 20);
+};
+
+const renderSearchResults = () => {
+  const query = globalSearchInput.value;
+  const results = getSearchResults(query);
+
+  searchResults.replaceChildren();
+  searchResults.classList.toggle("hidden", normalizeText(query).length < 2);
+
+  if (normalizeText(query).length < 2) return;
+
+  if (!results.length) {
+    renderEmptyState(searchResults, "No results found", "Try another room, document, system, or event name.");
+    return;
+  }
+
+  for (const result of results) searchResults.append(createSearchResultItem(result));
 };
 
 const renderApp = () => {
@@ -582,10 +852,43 @@ const populateInfrastructureDocumentSelect = () => {
   infrastructureDocumentSelect.disabled = !infrastructureRoomSelect.value || !selectableDocuments.length;
 };
 
+const populateTimelineDocumentSelect = () => {
+  const selectedValues = new Set(getSelectedValues(timelineDocumentSelect));
+  const selectableDocuments = documents.filter((doc) => {
+    if (doc.home_id !== timelineHomeSelect.value) return false;
+    if (timelineRoomSelect.value && doc.room_id !== timelineRoomSelect.value) return false;
+    return true;
+  });
+
+  timelineDocumentSelect.replaceChildren();
+
+  if (!selectableDocuments.length) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = timelineHomeSelect.value ? "No matching documents yet" : "Select home first";
+    timelineDocumentSelect.append(placeholder);
+  }
+
+  for (const doc of selectableDocuments) {
+    const option = document.createElement("option");
+    option.value = doc.id;
+    option.textContent = `${doc.title} (${getRoomName(doc.room_id)})`;
+    option.selected = selectedValues.has(doc.id);
+    timelineDocumentSelect.append(option);
+  }
+
+  timelineDocumentSelect.disabled = !selectableDocuments.length;
+};
+
 const updateModalDisabledStates = () => {
   const hasHomes = Boolean(homes.length);
   const documentHasRoom = Boolean(documentRoomSelect.value);
   const infrastructureHasRoom = Boolean(infrastructureRoomSelect.value);
+  const timelineHasDocuments = documents.some((doc) => {
+    if (doc.home_id !== timelineHomeSelect.value) return false;
+    if (timelineRoomSelect.value && doc.room_id !== timelineRoomSelect.value) return false;
+    return true;
+  });
 
   roomNameInput.disabled = !hasHomes;
   roomTypeSelect.disabled = !hasHomes;
@@ -598,6 +901,7 @@ const updateModalDisabledStates = () => {
   timelineTypeSelect.disabled = !hasHomes;
   timelineTitleInput.disabled = !hasHomes;
   timelineDescriptionInput.disabled = !hasHomes;
+  timelineDocumentSelect.disabled = !timelineHasDocuments;
   saveTimelineEventButton.disabled = !hasHomes;
   infrastructureTypeSelect.disabled = !infrastructureHasRoom;
   infrastructureTitleInput.disabled = !infrastructureHasRoom;
@@ -618,6 +922,7 @@ const populateModalSelects = () => {
   populateRoomSelect(timelineRoomSelect, timelineHomeSelect.value, true);
   populateRoomSelect(infrastructureRoomSelect, infrastructureHomeSelect.value, false);
   populateInfrastructureDocumentSelect();
+  populateTimelineDocumentSelect();
   updateModalDisabledStates();
 };
 
@@ -630,6 +935,7 @@ const preselectModalContext = (name) => {
     populateRoomSelect(documentRoomSelect, selectedHomeId, false);
     populateRoomSelect(timelineRoomSelect, selectedHomeId, true);
     populateRoomSelect(infrastructureRoomSelect, selectedHomeId, false);
+    populateTimelineDocumentSelect();
   }
 
   if (selectedRoomId) {
@@ -645,6 +951,7 @@ const preselectModalContext = (name) => {
       timelineRoomSelect.value = room.id;
       infrastructureRoomSelect.value = room.id;
       populateInfrastructureDocumentSelect();
+      populateTimelineDocumentSelect();
     }
   }
 
@@ -717,6 +1024,17 @@ const loadInfrastructure = async () => {
   infrastructureItems = data ?? [];
 };
 
+const loadTimelineDocumentLinks = async () => {
+  const { data, error } = await supabase
+    .from("timeline_event_documents")
+    .select("id,home_id,event_id,document_id,created_at")
+    .eq("owner_id", currentUser.id)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  timelineDocumentLinks = data ?? [];
+};
+
 const refreshDashboard = async () => {
   try {
     await loadHomes();
@@ -724,6 +1042,7 @@ const refreshDashboard = async () => {
     await loadDocuments();
     await loadTimelineEvents();
     await loadInfrastructure();
+    await loadTimelineDocumentLinks();
 
     if (selectedHomeId && !homes.some((home) => home.id === selectedHomeId)) {
       selectedHomeId = null;
@@ -738,6 +1057,7 @@ const refreshDashboard = async () => {
 
     populateModalSelects();
     renderApp();
+    renderSearchResults();
   } catch (error) {
     renderEmptyState(homesGrid, "Could not load dashboard", getDashboardErrorMessage(error));
     showView("homes");
@@ -792,6 +1112,20 @@ const validateTimelinePayload = (payload) => {
   if (eventDate > today) throw new Error("Timeline events cannot be in the future");
   if (!payload.event_type) throw new Error("Event type is required");
   if (!payload.title || payload.title.length < 3) throw new Error("Event title must be at least 3 characters");
+};
+
+const validateTimelineDocumentIds = (payload, documentIds) => {
+  for (const documentId of documentIds) {
+    const doc = documents.find((item) => item.id === documentId);
+
+    if (!doc || doc.home_id !== payload.home_id) {
+      throw new Error("Linked documents must belong to the selected home");
+    }
+
+    if (payload.room_id && doc.room_id !== payload.room_id) {
+      throw new Error("Room-specific timeline events can only link documents from the same room");
+    }
+  }
 };
 
 const validateInfrastructurePayload = (payload) => {
@@ -982,10 +1316,26 @@ const handleCreateTimelineEvent = async (event) => {
       title: timelineTitleInput.value.trim(),
       description: timelineDescriptionInput.value.trim() || null,
     };
+    const linkedDocumentIds = getSelectedValues(timelineDocumentSelect);
 
     validateTimelinePayload(payload);
-    const { error } = await supabase.from("timeline_events").insert(payload);
+    validateTimelineDocumentIds(payload, linkedDocumentIds);
+    const { data, error } = await supabase.from("timeline_events").insert(payload).select("id").single();
     if (error) throw error;
+
+    if (linkedDocumentIds.length) {
+      const linkRows = linkedDocumentIds.map((documentId) => ({
+        owner_id: currentUser.id,
+        home_id: payload.home_id,
+        event_id: data.id,
+        document_id: documentId,
+      }));
+      const { error: linkError } = await supabase.from("timeline_event_documents").insert(linkRows);
+      if (linkError) {
+        await supabase.from("timeline_events").delete().eq("id", data.id);
+        throw linkError;
+      }
+    }
 
     selectedHomeId = payload.home_id;
     selectedRoomId = payload.room_id;
@@ -1205,10 +1555,19 @@ roomHomeSelect.addEventListener("change", populateModalSelects);
 documentHomeSelect.addEventListener("change", populateModalSelects);
 documentRoomSelect.addEventListener("change", updateModalDisabledStates);
 timelineHomeSelect.addEventListener("change", populateModalSelects);
+timelineRoomSelect.addEventListener("change", () => {
+  populateTimelineDocumentSelect();
+  updateModalDisabledStates();
+});
 infrastructureHomeSelect.addEventListener("change", populateModalSelects);
 infrastructureRoomSelect.addEventListener("change", () => {
   populateInfrastructureDocumentSelect();
   updateModalDisabledStates();
+});
+globalSearchInput.addEventListener("input", renderSearchResults);
+clearSearchButton.addEventListener("click", () => {
+  globalSearchInput.value = "";
+  renderSearchResults();
 });
 homeForm.addEventListener("submit", handleCreateHome);
 roomForm.addEventListener("submit", handleCreateRoom);
