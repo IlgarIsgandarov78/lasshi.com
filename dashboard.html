@@ -4,28 +4,140 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body class="dashboard-page">
-  <header class="dashboard-header">
+  <header class="app-header">
     <div>
-      <p class="eyebrow">Digital Home Twin</p>
-      <h1>My homes</h1>
+      <p class="eyebrow">Lasshi</p>
+      <h1 id="pageTitle">Your homes</h1>
     </div>
-    <button id="logout" class="secondary-button">Log out</button>
+    <button id="logout" class="ghost-button" type="button">Log out</button>
   </header>
 
-  <main class="dashboard-layout">
-    <section class="panel">
-      <h2>Add home</h2>
-      <p class="section-copy">Create the root property record for layouts, documents, repairs, permits, and future sales history.</p>
+  <main class="app-shell">
+    <section id="homesView" class="app-view active">
+      <div class="view-toolbar">
+        <div>
+          <h2>Homes</h2>
+          <p class="muted">Choose a property to manage rooms, documentation, and history.</p>
+        </div>
+        <button id="openHomeModal" class="primary-button" type="button">Add home</button>
+      </div>
+      <div id="homesGrid" class="home-grid"></div>
+    </section>
 
-      <form id="homeForm" class="form home-form">
+    <section id="homeView" class="app-view">
+      <button id="backToHomes" class="text-button" type="button">Back to homes</button>
+
+      <div class="view-hero">
+        <div>
+          <p id="homeDetailMeta" class="eyebrow">Home</p>
+          <h2 id="homeDetailTitle">Home</h2>
+          <p id="homeDetailInfo" class="muted"></p>
+        </div>
+        <div class="action-row">
+          <button id="openRoomModal" class="primary-button" type="button">Add room</button>
+          <button id="openDocumentModal" class="secondary-button" type="button">Upload document</button>
+          <button id="openTimelineModal" class="secondary-button" type="button">Add event</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <strong id="homeRoomCount">0</strong>
+          <span>rooms</span>
+        </div>
+        <div class="stat-tile">
+          <strong id="homeDocumentCount">0</strong>
+          <span>documents</span>
+        </div>
+        <div class="stat-tile">
+          <strong id="homeEventCount">0</strong>
+          <span>events</span>
+        </div>
+      </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <h3>Rooms</h3>
+          <p class="muted">Open a room to see its documentation and history.</p>
+        </div>
+        <div id="homeRoomsGrid" class="room-grid"></div>
+      </section>
+
+      <div class="split-grid">
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Recent documentation</h3>
+          </div>
+          <div id="homeDocumentsList" class="stack-list"></div>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Recent history</h3>
+          </div>
+          <div id="homeTimelineList" class="stack-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="roomView" class="app-view">
+      <button id="backToHome" class="text-button" type="button">Back to home</button>
+
+      <div class="view-hero">
+        <div>
+          <p id="roomDetailHome" class="eyebrow">Room</p>
+          <h2 id="roomDetailTitle">Room</h2>
+          <p id="roomDetailMeta" class="muted"></p>
+        </div>
+        <div class="action-row">
+          <button id="openRoomDocumentModal" class="primary-button" type="button">Upload document</button>
+          <button id="openRoomTimelineModal" class="secondary-button" type="button">Add event</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <strong id="roomDetailDocumentCount">0</strong>
+          <span>documents</span>
+        </div>
+        <div class="stat-tile">
+          <strong id="roomDetailEventCount">0</strong>
+          <span>timeline events</span>
+        </div>
+      </div>
+
+      <div class="split-grid">
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Documentation</h3>
+          </div>
+          <div id="roomDetailDocuments" class="stack-list"></div>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Timeline</h3>
+          </div>
+          <div id="roomDetailTimeline" class="stack-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <section id="homeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="homeModalTitle">
+      <div class="modal-header">
+        <h2 id="homeModalTitle">Add home</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="homeForm" class="form">
         <label>
           Address
           <input id="homeAddress" type="text" placeholder="Exampleveien 12" autocomplete="street-address" required />
         </label>
-
         <label>
           Property type
           <select id="propertyType" required>
@@ -37,48 +149,35 @@
             <option value="Other">Other</option>
           </select>
         </label>
-
         <div class="form-grid">
           <label>
             Year built
             <input id="yearBuilt" type="number" min="1600" max="2100" placeholder="1998" required />
           </label>
-
           <label>
             Square meters
             <input id="squareMeters" type="number" min="1" step="0.1" placeholder="120" required />
           </label>
         </div>
-
-        <button id="saveHome" type="submit">Create home</button>
+        <button id="saveHome" class="primary-button" type="submit">Create home</button>
         <p id="homeStatus" class="status-message" role="status"></p>
       </form>
     </section>
 
-    <section class="panel">
-      <h2>Home objects</h2>
-      <div id="homesList" class="homes-list">
-        <p class="empty-state">No homes added yet.</p>
+    <section id="roomModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="roomModalTitle">
+      <div class="modal-header">
+        <h2 id="roomModalTitle">Add room</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
       </div>
-    </section>
-
-    <section class="panel room-panel">
-      <h2>Rooms</h2>
-      <p class="section-copy">Rooms are the foundation for future photos, documents, repairs, and timeline events.</p>
-
-      <form id="roomForm" class="form room-form">
+      <form id="roomForm" class="form">
         <label>
           Home
-          <select id="roomHomeId" required>
-            <option value="">Select home</option>
-          </select>
+          <select id="roomHomeId" required></select>
         </label>
-
         <label>
           Room name
           <input id="roomName" type="text" placeholder="Kitchen" required />
         </label>
-
         <label>
           Room type
           <select id="roomType" required>
@@ -94,35 +193,25 @@
             <option value="Other">Other</option>
           </select>
         </label>
-
-        <button id="saveRoom" type="submit">Create room</button>
+        <button id="saveRoom" class="primary-button" type="submit">Create room</button>
         <p id="roomStatus" class="status-message" role="status"></p>
       </form>
-
-      <div id="roomsList" class="rooms-list">
-        <p class="empty-state">No rooms added yet.</p>
-      </div>
     </section>
 
-    <section class="panel documentation-panel">
-      <h2>Upload documentation</h2>
-      <p class="section-copy">Attach photos, PDFs, receipts, manuals, and drawings to the room where they belong.</p>
-
-      <form id="documentForm" class="form document-form">
+    <section id="documentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle">
+      <div class="modal-header">
+        <h2 id="documentModalTitle">Upload document</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="documentForm" class="form">
         <label>
           Home
-          <select id="documentHomeId" required>
-            <option value="">Select home</option>
-          </select>
+          <select id="documentHomeId" required></select>
         </label>
-
         <label>
           Room
-          <select id="documentRoomId" required>
-            <option value="">Select room</option>
-          </select>
+          <select id="documentRoomId" required></select>
         </label>
-
         <label>
           Type
           <select id="documentType" required>
@@ -136,46 +225,37 @@
             <option value="Other">Other</option>
           </select>
         </label>
-
         <label>
           Title
           <input id="documentTitle" type="text" placeholder="Heated floor installation photo" />
         </label>
-
-        <label class="file-field">
+        <label>
           File
           <input id="documentFile" type="file" accept="image/*,.pdf,application/pdf" required />
         </label>
-
-        <button id="uploadDocument" type="submit">Upload</button>
+        <button id="uploadDocument" class="primary-button" type="submit">Upload</button>
         <p id="documentStatus" class="status-message" role="status"></p>
       </form>
     </section>
 
-    <section class="panel timeline-panel">
-      <h2>Timeline</h2>
-      <p class="section-copy">Record renovations, repairs, installations, inspections, and other changes as the living history of the home.</p>
-
-      <form id="timelineForm" class="form timeline-form">
+    <section id="timelineModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="timelineModalTitle">
+      <div class="modal-header">
+        <h2 id="timelineModalTitle">Add event</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="timelineForm" class="form">
         <label>
           Home
-          <select id="timelineHomeId" required>
-            <option value="">Select home</option>
-          </select>
+          <select id="timelineHomeId" required></select>
         </label>
-
         <label>
           Room
-          <select id="timelineRoomId">
-            <option value="">Whole home</option>
-          </select>
+          <select id="timelineRoomId"></select>
         </label>
-
         <label>
           Date
           <input id="timelineDate" type="date" required />
         </label>
-
         <label>
           Type
           <select id="timelineType" required>
@@ -189,27 +269,20 @@
             <option value="Other">Other</option>
           </select>
         </label>
-
-        <label class="timeline-title-field">
+        <label>
           Title
           <input id="timelineTitle" type="text" placeholder="Bathroom renovated" required />
         </label>
-
-        <label class="timeline-description-field">
+        <label>
           Notes
           <textarea id="timelineDescription" rows="3" placeholder="Optional context, contractor, location, or evidence details"></textarea>
         </label>
-
-        <button id="saveTimelineEvent" type="submit">Add event</button>
+        <button id="saveTimelineEvent" class="primary-button" type="submit">Add event</button>
         <p id="timelineStatus" class="status-message" role="status"></p>
       </form>
-
-      <div id="timelineList" class="timeline-list">
-        <p class="empty-state">No timeline events yet.</p>
-      </div>
     </section>
-  </main>
+  </div>
 
-  <script type="module" src="dashboard.js?v=2"></script>
+  <script type="module" src="dashboard.js?v=4"></script>
 </body>
 </html>
