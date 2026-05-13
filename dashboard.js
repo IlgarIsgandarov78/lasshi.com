@@ -704,7 +704,7 @@ const sanitizeFileName = (fileName) => {
 };
 
 const createUploadId = () => {
-  if (globalThis.crypto?.randomUUID) {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
   }
 
