@@ -862,6 +862,94 @@ const createJobBriefText = (payload) => {
   ].join("\n");
 };
 
+const createAiJobBriefPayload = (payload) => {
+  const context = getJobBriefContext(payload);
+
+  return {
+    request: {
+      job_type: payload.job_type,
+      urgency: payload.urgency,
+      description: payload.description,
+    },
+    home: {
+      address: context.home.address,
+      property_type: context.home.property_type,
+      year_built: context.home.year_built,
+      square_meters: context.home.square_meters,
+    },
+    room: context.room
+      ? {
+          name: context.room.name,
+          room_type: context.room.room_type,
+        }
+      : null,
+    documents: context.documents.slice(0, 12).map((doc) => ({
+      title: doc.title,
+      document_type: doc.document_type,
+      file_name: doc.file_name,
+      room: getRoomName(doc.room_id),
+    })),
+    timeline: context.events.slice(0, 10).map((event) => ({
+      date: event.event_date,
+      type: event.event_type,
+      title: event.title,
+      description: event.description,
+      room: event.room_id ? getRoomName(event.room_id) : "Whole home",
+      linked_documents: getEventDocuments(event.id).map((doc) => doc.title),
+    })),
+    infrastructure: context.infrastructure.slice(0, 12).map((item) => ({
+      type: item.infrastructure_type,
+      title: item.title,
+      location: item.location_note,
+      risk_level: item.risk_level,
+      confidence_level: item.confidence_level,
+      linked_document: getDocumentTitle(item.source_document_id),
+      notes: item.notes,
+    })),
+  };
+};
+
+const requestAiJobBrief = async (payload) => {
+  const { data, error } = await supabase.functions.invoke("generate-job-brief", {
+    body: createAiJobBriefPayload(payload),
+  });
+
+  if (error) {
+    const response = error.context;
+
+    if (response && typeof response.clone === "function") {
+      try {
+        const body = await response.clone().json();
+        if (body?.error) throw new Error(body.error);
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message !== "Unexpected end of JSON input") {
+          throw parseError;
+        }
+      }
+    }
+
+    throw error;
+  }
+
+  if (data?.error) throw new Error(data.error);
+  if (!data?.brief) throw new Error("AI did not return a job brief");
+
+  return data;
+};
+
+const getJobBriefAiErrorMessage = (error) => {
+  const message = error?.message ?? "The AI request failed.";
+
+  if (message.includes("Failed to send a request to the Edge Function")) {
+    return [
+      message,
+      "Likely fix: redeploy the Supabase Edge Function so supabase/config.toml is applied.",
+    ].join(" ");
+  }
+
+  return message;
+};
+
 const renderApp = () => {
   renderHomes();
 
@@ -1543,9 +1631,11 @@ const handleCreateInfrastructure = async (event) => {
   }
 };
 
-const handleGenerateJobBrief = (event) => {
+const handleGenerateJobBrief = async (event) => {
   event.preventDefault();
   setStatus(jobBriefStatus, "");
+  generateJobBriefButton.disabled = true;
+  generateJobBriefButton.textContent = "Generating...";
 
   try {
     const payload = {
@@ -1557,13 +1647,25 @@ const handleGenerateJobBrief = (event) => {
     };
 
     validateJobBriefPayload(payload);
-    generatedJobBriefText = createJobBriefText(payload);
+    let statusMessage = "AI job brief generated. Review it before sending to a contractor.";
+
+    try {
+      const aiResult = await requestAiJobBrief(payload);
+      generatedJobBriefText = aiResult.brief;
+    } catch (aiError) {
+      generatedJobBriefText = createJobBriefText(payload);
+      statusMessage = `AI unavailable, generated local fallback instead. ${getJobBriefAiErrorMessage(aiError)}`.trim();
+    }
+
     jobBriefOutput.textContent = generatedJobBriefText;
     jobBriefOutput.classList.remove("hidden");
     copyJobBriefButton.classList.remove("hidden");
-    setStatus(jobBriefStatus, "Job brief generated. Review it before sending to a contractor.", "success");
+    setStatus(jobBriefStatus, statusMessage, "success");
   } catch (error) {
     setStatus(jobBriefStatus, error.message, "error");
+  } finally {
+    generateJobBriefButton.disabled = false;
+    generateJobBriefButton.textContent = "Generate brief";
   }
 };
 
