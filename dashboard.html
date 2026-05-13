@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -47,6 +47,7 @@
         </div>
         <div class="action-row">
           <button id="openRoomModal" class="primary-button" type="button">Add room</button>
+          <button id="openJobBriefModal" class="secondary-button" type="button">Generate job brief</button>
           <button id="openDocumentModal" class="secondary-button" type="button">Upload document</button>
           <button id="openTimelineModal" class="secondary-button" type="button">Add event</button>
         </div>
@@ -114,6 +115,7 @@
         </div>
         <div class="action-row">
           <button id="openRoomInfrastructureModal" class="primary-button" type="button">Add infrastructure</button>
+          <button id="openRoomJobBriefModal" class="secondary-button" type="button">Generate job brief</button>
           <button id="openRoomDocumentModal" class="secondary-button" type="button">Upload document</button>
           <button id="openRoomTimelineModal" class="secondary-button" type="button">Add event</button>
         </div>
@@ -387,8 +389,59 @@
         <p id="infrastructureStatus" class="status-message" role="status"></p>
       </form>
     </section>
+
+    <section id="jobBriefModal" class="modal wide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="jobBriefModalTitle">
+      <div class="modal-header">
+        <h2 id="jobBriefModalTitle">Generate job brief</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="jobBriefForm" class="form">
+        <div class="form-grid">
+          <label>
+            Home
+            <select id="jobBriefHomeId" required></select>
+          </label>
+          <label>
+            Room
+            <select id="jobBriefRoomId"></select>
+          </label>
+        </div>
+        <div class="form-grid">
+          <label>
+            Job type
+            <select id="jobBriefType" required>
+              <option value="">Select type</option>
+              <option value="Repair">Repair</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Installation">Installation</option>
+              <option value="Renovation">Renovation</option>
+              <option value="Inspection">Inspection</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>
+            Urgency
+            <select id="jobBriefUrgency" required>
+              <option value="Normal">Normal</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Planning">Planning</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          What needs to be done?
+          <textarea id="jobBriefDescription" rows="4" placeholder="Example: Fix leak under bathroom sink and check if drilling near cabinet is safe." required></textarea>
+        </label>
+        <div class="action-row">
+          <button id="generateJobBrief" class="primary-button" type="submit">Generate brief</button>
+          <button id="copyJobBrief" class="secondary-button hidden" type="button">Copy brief</button>
+        </div>
+        <p id="jobBriefStatus" class="status-message" role="status"></p>
+        <pre id="jobBriefOutput" class="job-brief-output hidden"></pre>
+      </form>
+    </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=6"></script>
+  <script type="module" src="dashboard.js?v=7"></script>
 </body>
 </html>

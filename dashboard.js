@@ -43,6 +43,7 @@ const modals = {
   document: document.getElementById("documentModal"),
   timeline: document.getElementById("timelineModal"),
   infrastructure: document.getElementById("infrastructureModal"),
+  jobBrief: document.getElementById("jobBriefModal"),
 };
 
 const homeForm = document.getElementById("homeForm");
@@ -89,6 +90,17 @@ const infrastructureNotesInput = document.getElementById("infrastructureNotes");
 const infrastructureStatus = document.getElementById("infrastructureStatus");
 const saveInfrastructureButton = document.getElementById("saveInfrastructure");
 
+const jobBriefForm = document.getElementById("jobBriefForm");
+const jobBriefHomeSelect = document.getElementById("jobBriefHomeId");
+const jobBriefRoomSelect = document.getElementById("jobBriefRoomId");
+const jobBriefTypeSelect = document.getElementById("jobBriefType");
+const jobBriefUrgencySelect = document.getElementById("jobBriefUrgency");
+const jobBriefDescriptionInput = document.getElementById("jobBriefDescription");
+const jobBriefStatus = document.getElementById("jobBriefStatus");
+const generateJobBriefButton = document.getElementById("generateJobBrief");
+const copyJobBriefButton = document.getElementById("copyJobBrief");
+const jobBriefOutput = document.getElementById("jobBriefOutput");
+
 let currentUser = null;
 let homes = [];
 let rooms = [];
@@ -98,6 +110,8 @@ let timelineDocumentLinks = [];
 let infrastructureItems = [];
 let selectedHomeId = null;
 let selectedRoomId = null;
+let generatedJobBriefText = "";
+let timelineEvidenceAvailable = true;
 
 const setStatus = (element, message, type = "") => {
   const className = `status-message ${type}`.trim();
@@ -125,15 +139,11 @@ const getDashboardErrorMessage = (error) => {
     return "Infrastructure table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.";
   }
 
-  if (message.includes("timeline_event_documents")) {
-    return "Timeline evidence table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.";
-  }
-
   return message;
 };
 
 const clearModalStatuses = () => {
-  [homeStatus, roomStatus, documentStatus, timelineStatus, infrastructureStatus].forEach((status) => {
+  [homeStatus, roomStatus, documentStatus, timelineStatus, infrastructureStatus, jobBriefStatus].forEach((status) => {
     setStatus(status, "");
   });
 };
@@ -183,6 +193,11 @@ const formatTimelineDate = (dateValue) => {
     month: "short",
     year: "numeric",
   });
+};
+
+const formatBriefList = (items, emptyText) => {
+  if (!items.length) return `- ${emptyText}`;
+  return items.map((item) => `- ${item}`).join("\n");
 };
 
 const showView = (viewName) => {
@@ -765,6 +780,88 @@ const renderSearchResults = () => {
   for (const result of results) searchResults.append(createSearchResultItem(result));
 };
 
+const getJobBriefContext = (payload) => {
+  const home = homes.find((item) => item.id === payload.home_id);
+  const room = payload.room_id ? rooms.find((item) => item.id === payload.room_id) : null;
+  const scopedDocuments = documents.filter((doc) => doc.home_id === payload.home_id && (!payload.room_id || doc.room_id === payload.room_id));
+  const scopedEvents = timelineEvents.filter((event) => event.home_id === payload.home_id && (!payload.room_id || event.room_id === payload.room_id));
+  const scopedInfrastructure = infrastructureItems.filter((item) => item.home_id === payload.home_id && (!payload.room_id || item.room_id === payload.room_id));
+  const highRiskInfrastructure = scopedInfrastructure.filter((item) => item.risk_level === "High");
+  const mediumRiskInfrastructure = scopedInfrastructure.filter((item) => item.risk_level === "Medium");
+
+  return {
+    home,
+    room,
+    documents: scopedDocuments,
+    events: scopedEvents,
+    infrastructure: scopedInfrastructure,
+    highRiskInfrastructure,
+    mediumRiskInfrastructure,
+  };
+};
+
+const createJobBriefText = (payload) => {
+  const context = getJobBriefContext(payload);
+  const location = context.room ? `${context.room.name} (${context.room.room_type})` : "Whole home";
+  const importantInfrastructure = [...context.highRiskInfrastructure, ...context.mediumRiskInfrastructure].slice(0, 8);
+  const recentEvents = context.events.slice(0, 6);
+  const relevantDocuments = context.documents.slice(0, 8);
+  const documentsByType = relevantDocuments.map((doc) => `${doc.title} (${doc.document_type}, ${getRoomName(doc.room_id)})`);
+  const infrastructureLines = importantInfrastructure.map((item) => {
+    const evidence = item.source_document_id ? ` Evidence: ${getDocumentTitle(item.source_document_id) || "linked document"}.` : " No linked evidence yet.";
+    return `${item.risk_level} risk ${item.infrastructure_type}: ${item.title}. Location: ${item.location_note}.${evidence}`;
+  });
+  const timelineLines = recentEvents.map((event) => {
+    const evidenceCount = getEventDocuments(event.id).length;
+    return `${formatTimelineDate(event.event_date)} - ${event.event_type}: ${event.title}${evidenceCount ? ` (${evidenceCount} linked evidence document${evidenceCount === 1 ? "" : "s"})` : ""}`;
+  });
+  const missingEvidenceWarnings = [];
+
+  if (!context.documents.length) missingEvidenceWarnings.push("No documents are attached to this scope yet.");
+  if (!context.infrastructure.length) missingEvidenceWarnings.push("No hidden infrastructure notes are recorded for this scope yet.");
+  if (context.highRiskInfrastructure.some((item) => !item.source_document_id)) {
+    missingEvidenceWarnings.push("Some high-risk infrastructure notes do not have linked evidence.");
+  }
+
+  return [
+    "AI JOB BRIEF",
+    "",
+    "1. Request",
+    `- Job type: ${payload.job_type}`,
+    `- Urgency: ${payload.urgency}`,
+    `- Property: ${context.home.address}`,
+    `- Location: ${location}`,
+    `- Home details: ${context.home.property_type}, built ${context.home.year_built}, ${formatSquareMeters(context.home.square_meters)} m2`,
+    `- Homeowner description: ${payload.description}`,
+    "",
+    "2. Contractor-ready summary",
+    `The requested work is a ${payload.job_type.toLowerCase()} task at ${location}. Review the hidden infrastructure notes and evidence below before drilling, opening walls/floors, changing plumbing/electrical routes, or pricing the work.`,
+    "",
+    "3. Known risks and hidden systems",
+    formatBriefList(infrastructureLines, "No hidden infrastructure risks recorded for this scope."),
+    "",
+    "4. Relevant documents to review",
+    formatBriefList(documentsByType, "No documents found for this scope."),
+    "",
+    "5. Recent history",
+    formatBriefList(timelineLines, "No timeline events found for this scope."),
+    "",
+    "6. Missing information / uncertainty",
+    formatBriefList(missingEvidenceWarnings, "No obvious documentation gaps found from the current home twin."),
+    "",
+    "7. Suggested contractor questions",
+    "- Can the work be done without drilling or cutting near recorded hidden systems?",
+    "- Do you need additional photos before pricing the job?",
+    "- Should any area be opened for inspection before committing to scope or price?",
+    "- Are permits, waterproofing certificates, or electrical documentation needed after completion?",
+    "",
+    "8. Suggested job package",
+    "- Share this brief with the contractor.",
+    "- Attach the relevant documents listed above.",
+    "- Ask the contractor to return photos, receipts, and completion notes so the home twin stays updated.",
+  ].join("\n");
+};
+
 const renderApp = () => {
   renderHomes();
 
@@ -862,6 +959,15 @@ const populateTimelineDocumentSelect = () => {
 
   timelineDocumentSelect.replaceChildren();
 
+  if (!timelineEvidenceAvailable) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Run schema.sql to enable evidence links";
+    timelineDocumentSelect.append(placeholder);
+    timelineDocumentSelect.disabled = true;
+    return;
+  }
+
   if (!selectableDocuments.length) {
     const placeholder = document.createElement("option");
     placeholder.value = "";
@@ -880,11 +986,18 @@ const populateTimelineDocumentSelect = () => {
   timelineDocumentSelect.disabled = !selectableDocuments.length;
 };
 
+const resetJobBriefOutput = () => {
+  generatedJobBriefText = "";
+  jobBriefOutput.textContent = "";
+  jobBriefOutput.classList.add("hidden");
+  copyJobBriefButton.classList.add("hidden");
+};
+
 const updateModalDisabledStates = () => {
   const hasHomes = Boolean(homes.length);
   const documentHasRoom = Boolean(documentRoomSelect.value);
   const infrastructureHasRoom = Boolean(infrastructureRoomSelect.value);
-  const timelineHasDocuments = documents.some((doc) => {
+  const timelineHasDocuments = timelineEvidenceAvailable && documents.some((doc) => {
     if (doc.home_id !== timelineHomeSelect.value) return false;
     if (timelineRoomSelect.value && doc.room_id !== timelineRoomSelect.value) return false;
     return true;
@@ -910,6 +1023,10 @@ const updateModalDisabledStates = () => {
   infrastructureConfidenceSelect.disabled = !infrastructureHasRoom;
   infrastructureNotesInput.disabled = !infrastructureHasRoom;
   saveInfrastructureButton.disabled = !infrastructureHasRoom;
+  jobBriefTypeSelect.disabled = !hasHomes;
+  jobBriefUrgencySelect.disabled = !hasHomes;
+  jobBriefDescriptionInput.disabled = !hasHomes;
+  generateJobBriefButton.disabled = !hasHomes;
 };
 
 const populateModalSelects = () => {
@@ -917,10 +1034,12 @@ const populateModalSelects = () => {
   populateHomeSelect(documentHomeSelect, "Select home");
   populateHomeSelect(timelineHomeSelect, "Select home");
   populateHomeSelect(infrastructureHomeSelect, "Select home");
+  populateHomeSelect(jobBriefHomeSelect, "Select home");
 
   populateRoomSelect(documentRoomSelect, documentHomeSelect.value, false);
   populateRoomSelect(timelineRoomSelect, timelineHomeSelect.value, true);
   populateRoomSelect(infrastructureRoomSelect, infrastructureHomeSelect.value, false);
+  populateRoomSelect(jobBriefRoomSelect, jobBriefHomeSelect.value, true);
   populateInfrastructureDocumentSelect();
   populateTimelineDocumentSelect();
   updateModalDisabledStates();
@@ -932,9 +1051,11 @@ const preselectModalContext = (name) => {
     documentHomeSelect.value = selectedHomeId;
     timelineHomeSelect.value = selectedHomeId;
     infrastructureHomeSelect.value = selectedHomeId;
+    jobBriefHomeSelect.value = selectedHomeId;
     populateRoomSelect(documentRoomSelect, selectedHomeId, false);
     populateRoomSelect(timelineRoomSelect, selectedHomeId, true);
     populateRoomSelect(infrastructureRoomSelect, selectedHomeId, false);
+    populateRoomSelect(jobBriefRoomSelect, selectedHomeId, true);
     populateTimelineDocumentSelect();
   }
 
@@ -944,12 +1065,15 @@ const preselectModalContext = (name) => {
       documentHomeSelect.value = room.home_id;
       timelineHomeSelect.value = room.home_id;
       infrastructureHomeSelect.value = room.home_id;
+      jobBriefHomeSelect.value = room.home_id;
       populateRoomSelect(documentRoomSelect, room.home_id, false);
       populateRoomSelect(timelineRoomSelect, room.home_id, true);
       populateRoomSelect(infrastructureRoomSelect, room.home_id, false);
+      populateRoomSelect(jobBriefRoomSelect, room.home_id, true);
       documentRoomSelect.value = room.id;
       timelineRoomSelect.value = room.id;
       infrastructureRoomSelect.value = room.id;
+      jobBriefRoomSelect.value = room.id;
       populateInfrastructureDocumentSelect();
       populateTimelineDocumentSelect();
     }
@@ -962,6 +1086,7 @@ const preselectModalContext = (name) => {
 
 const openActionModal = (name) => {
   clearModalStatuses();
+  if (name === "jobBrief") resetJobBriefOutput();
   populateModalSelects();
   preselectModalContext(name);
   updateModalDisabledStates();
@@ -1031,7 +1156,17 @@ const loadTimelineDocumentLinks = async () => {
     .eq("owner_id", currentUser.id)
     .order("created_at", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    if (error.message?.includes("timeline_event_documents")) {
+      timelineEvidenceAvailable = false;
+      timelineDocumentLinks = [];
+      return;
+    }
+
+    throw error;
+  }
+
+  timelineEvidenceAvailable = true;
   timelineDocumentLinks = data ?? [];
 };
 
@@ -1115,6 +1250,10 @@ const validateTimelinePayload = (payload) => {
 };
 
 const validateTimelineDocumentIds = (payload, documentIds) => {
+  if (documentIds.length && !timelineEvidenceAvailable) {
+    throw new Error("Timeline evidence table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.");
+  }
+
   for (const documentId of documentIds) {
     const doc = documents.find((item) => item.id === documentId);
 
@@ -1148,6 +1287,17 @@ const validateInfrastructurePayload = (payload) => {
   ) {
     throw new Error("Linked document does not belong to the selected room");
   }
+};
+
+const validateJobBriefPayload = (payload) => {
+  if (!payload.home_id) throw new Error("Choose a home for this job brief");
+  if (!homes.some((home) => home.id === payload.home_id)) throw new Error("Selected home was not found");
+  if (payload.room_id && !rooms.some((room) => room.id === payload.room_id && room.home_id === payload.home_id)) {
+    throw new Error("Selected room does not belong to the selected home");
+  }
+  if (!payload.job_type) throw new Error("Choose a job type");
+  if (!payload.urgency) throw new Error("Choose an urgency");
+  if (!payload.description || payload.description.length < 10) throw new Error("Describe the work in at least 10 characters");
 };
 
 const sanitizeFileName = (fileName) => {
@@ -1393,6 +1543,44 @@ const handleCreateInfrastructure = async (event) => {
   }
 };
 
+const handleGenerateJobBrief = (event) => {
+  event.preventDefault();
+  setStatus(jobBriefStatus, "");
+
+  try {
+    const payload = {
+      home_id: jobBriefHomeSelect.value,
+      room_id: jobBriefRoomSelect.value || null,
+      job_type: jobBriefTypeSelect.value,
+      urgency: jobBriefUrgencySelect.value,
+      description: jobBriefDescriptionInput.value.trim(),
+    };
+
+    validateJobBriefPayload(payload);
+    generatedJobBriefText = createJobBriefText(payload);
+    jobBriefOutput.textContent = generatedJobBriefText;
+    jobBriefOutput.classList.remove("hidden");
+    copyJobBriefButton.classList.remove("hidden");
+    setStatus(jobBriefStatus, "Job brief generated. Review it before sending to a contractor.", "success");
+  } catch (error) {
+    setStatus(jobBriefStatus, error.message, "error");
+  }
+};
+
+const handleCopyJobBrief = async () => {
+  if (!generatedJobBriefText) {
+    setStatus(jobBriefStatus, "Generate a brief first.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(generatedJobBriefText);
+    setStatus(jobBriefStatus, "Job brief copied.", "success");
+  } catch (error) {
+    setStatus(jobBriefStatus, "Could not copy automatically. Select the text and copy it manually.", "error");
+  }
+};
+
 const handleOpenDocument = async (doc) => {
   const documentWindow = window.open("about:blank", "_blank");
   if (documentWindow) documentWindow.opener = null;
@@ -1519,10 +1707,12 @@ const initDashboard = async () => {
 
 document.getElementById("openHomeModal").addEventListener("click", () => openActionModal("home"));
 document.getElementById("openRoomModal").addEventListener("click", () => openActionModal("room"));
+document.getElementById("openJobBriefModal").addEventListener("click", () => openActionModal("jobBrief"));
 document.getElementById("openDocumentModal").addEventListener("click", () => openActionModal("document"));
 document.getElementById("openTimelineModal").addEventListener("click", () => openActionModal("timeline"));
 document.getElementById("openRoomInfrastructureModal").addEventListener("click", () => openActionModal("infrastructure"));
 document.getElementById("openRoomInfrastructureModalSecondary").addEventListener("click", () => openActionModal("infrastructure"));
+document.getElementById("openRoomJobBriefModal").addEventListener("click", () => openActionModal("jobBrief"));
 document.getElementById("openRoomDocumentModal").addEventListener("click", () => openActionModal("document"));
 document.getElementById("openRoomTimelineModal").addEventListener("click", () => openActionModal("timeline"));
 document.getElementById("backToHomes").addEventListener("click", () => {
@@ -1564,6 +1754,7 @@ infrastructureRoomSelect.addEventListener("change", () => {
   populateInfrastructureDocumentSelect();
   updateModalDisabledStates();
 });
+jobBriefHomeSelect.addEventListener("change", populateModalSelects);
 globalSearchInput.addEventListener("input", renderSearchResults);
 clearSearchButton.addEventListener("click", () => {
   globalSearchInput.value = "";
@@ -1574,5 +1765,7 @@ roomForm.addEventListener("submit", handleCreateRoom);
 documentForm.addEventListener("submit", handleUploadDocument);
 timelineForm.addEventListener("submit", handleCreateTimelineEvent);
 infrastructureForm.addEventListener("submit", handleCreateInfrastructure);
+jobBriefForm.addEventListener("submit", handleGenerateJobBrief);
+copyJobBriefButton.addEventListener("click", handleCopyJobBrief);
 
 initDashboard();

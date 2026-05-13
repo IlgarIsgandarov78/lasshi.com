@@ -664,8 +664,25 @@ button:disabled {
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
 }
 
+.wide-modal {
+  width: min(100%, 760px);
+}
+
 .modal-header {
   margin-bottom: 1rem;
+}
+
+.job-brief-output {
+  max-height: 24rem;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #111827;
+  color: #f9fafb;
+  font: 0.9rem/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 760px) {
