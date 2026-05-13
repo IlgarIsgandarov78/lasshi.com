@@ -703,6 +703,20 @@ const sanitizeFileName = (fileName) => {
     .toLowerCase();
 };
 
+const createUploadId = () => {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  if (globalThis.crypto?.getRandomValues) {
+    const values = new Uint32Array(4);
+    globalThis.crypto.getRandomValues(values);
+    return Array.from(values, (value) => value.toString(16).padStart(8, "0")).join("");
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 const getDocumentPayload = () => {
   const file = documentFileInput.files[0];
   const title = documentTitleInput.value.trim() || file?.name || "Untitled document";
@@ -816,7 +830,7 @@ const handleUploadDocument = async (event) => {
   try {
     const { payload, file } = getDocumentPayload();
     const safeFileName = sanitizeFileName(file.name);
-    const storagePath = `${currentUser.id}/${payload.home_id}/${payload.room_id}/${crypto.randomUUID()}-${safeFileName}`;
+    const storagePath = `${currentUser.id}/${payload.home_id}/${payload.room_id}/${createUploadId()}-${safeFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("room-documents")
