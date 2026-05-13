@@ -392,3 +392,132 @@ using (
       and homes.owner_id = auth.uid()
   )
 );
+
+create table if not exists public.room_infrastructure (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.homes(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  infrastructure_type text not null,
+  title text not null,
+  location_note text not null,
+  risk_level text not null check (risk_level in ('Low', 'Medium', 'High')),
+  confidence_level text not null check (confidence_level in ('Low', 'Medium', 'High')),
+  source_document_id uuid references public.room_documents(id) on delete set null,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists room_infrastructure_home_id_idx on public.room_infrastructure(home_id);
+create index if not exists room_infrastructure_room_id_idx on public.room_infrastructure(room_id);
+create index if not exists room_infrastructure_owner_id_idx on public.room_infrastructure(owner_id);
+create index if not exists room_infrastructure_source_document_id_idx on public.room_infrastructure(source_document_id);
+
+alter table public.room_infrastructure enable row level security;
+
+drop policy if exists "Users can read infrastructure in their own rooms" on public.room_infrastructure;
+create policy "Users can read infrastructure in their own rooms"
+on public.room_infrastructure
+for select
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_infrastructure.room_id
+      and rooms.home_id = room_infrastructure.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create infrastructure in their own rooms" on public.room_infrastructure;
+create policy "Users can create infrastructure in their own rooms"
+on public.room_infrastructure
+for insert
+to authenticated
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_infrastructure.room_id
+      and rooms.home_id = room_infrastructure.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+  and (
+    source_document_id is null
+    or exists (
+      select 1
+      from public.room_documents
+      where room_documents.id = room_infrastructure.source_document_id
+        and room_documents.home_id = room_infrastructure.home_id
+        and room_documents.room_id = room_infrastructure.room_id
+        and room_documents.owner_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Users can update infrastructure in their own rooms" on public.room_infrastructure;
+create policy "Users can update infrastructure in their own rooms"
+on public.room_infrastructure
+for update
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_infrastructure.room_id
+      and rooms.home_id = room_infrastructure.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_infrastructure.room_id
+      and rooms.home_id = room_infrastructure.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+  and (
+    source_document_id is null
+    or exists (
+      select 1
+      from public.room_documents
+      where room_documents.id = room_infrastructure.source_document_id
+        and room_documents.home_id = room_infrastructure.home_id
+        and room_documents.room_id = room_infrastructure.room_id
+        and room_documents.owner_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Users can delete infrastructure in their own rooms" on public.room_infrastructure;
+create policy "Users can delete infrastructure in their own rooms"
+on public.room_infrastructure
+for delete
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_infrastructure.room_id
+      and rooms.home_id = room_infrastructure.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);

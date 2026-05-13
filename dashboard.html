@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -93,12 +93,17 @@
           <p id="roomDetailMeta" class="muted"></p>
         </div>
         <div class="action-row">
-          <button id="openRoomDocumentModal" class="primary-button" type="button">Upload document</button>
+          <button id="openRoomInfrastructureModal" class="primary-button" type="button">Add infrastructure</button>
+          <button id="openRoomDocumentModal" class="secondary-button" type="button">Upload document</button>
           <button id="openRoomTimelineModal" class="secondary-button" type="button">Add event</button>
         </div>
       </div>
 
       <div class="stats-grid">
+        <div class="stat-tile">
+          <strong id="roomDetailInfrastructureCount">0</strong>
+          <span>infrastructure notes</span>
+        </div>
         <div class="stat-tile">
           <strong id="roomDetailDocumentCount">0</strong>
           <span>documents</span>
@@ -108,6 +113,17 @@
           <span>timeline events</span>
         </div>
       </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <h3>Infrastructure</h3>
+            <p class="muted">Hidden systems, risk zones, and evidence-backed notes for this room.</p>
+          </div>
+          <button id="openRoomInfrastructureModalSecondary" class="secondary-button compact-button" type="button">Add note</button>
+        </div>
+        <div id="roomDetailInfrastructure" class="stack-list"></div>
+      </section>
 
       <div class="split-grid">
         <section class="content-section">
@@ -281,8 +297,74 @@
         <p id="timelineStatus" class="status-message" role="status"></p>
       </form>
     </section>
+
+    <section id="infrastructureModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="infrastructureModalTitle">
+      <div class="modal-header">
+        <h2 id="infrastructureModalTitle">Add infrastructure</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="infrastructureForm" class="form">
+        <label>
+          Home
+          <select id="infrastructureHomeId" required></select>
+        </label>
+        <label>
+          Room
+          <select id="infrastructureRoomId" required></select>
+        </label>
+        <label>
+          Type
+          <select id="infrastructureType" required>
+            <option value="">Select type</option>
+            <option value="Water">Water</option>
+            <option value="Electricity">Electricity</option>
+            <option value="Heating cables">Heating cables</option>
+            <option value="Drainage">Drainage</option>
+            <option value="Ventilation">Ventilation</option>
+            <option value="Structure">Structure</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label>
+          Title
+          <input id="infrastructureTitle" type="text" placeholder="Heating cables near shower zone" required />
+        </label>
+        <label>
+          Location
+          <input id="infrastructureLocation" type="text" placeholder="Under bathroom floor, close to sink wall" required />
+        </label>
+        <div class="form-grid">
+          <label>
+            Risk level
+            <select id="infrastructureRisk" required>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+          <label>
+            Confidence
+            <select id="infrastructureConfidence" required>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Linked document
+          <select id="infrastructureDocumentId"></select>
+        </label>
+        <label>
+          Notes
+          <textarea id="infrastructureNotes" rows="3" placeholder="Optional details, contractor notes, or drilling warnings"></textarea>
+        </label>
+        <button id="saveInfrastructure" class="primary-button" type="submit">Save infrastructure</button>
+        <p id="infrastructureStatus" class="status-message" role="status"></p>
+      </form>
+    </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=4"></script>
+  <script type="module" src="dashboard.js?v=5"></script>
 </body>
 </html>

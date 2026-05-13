@@ -23,8 +23,10 @@ const homeTimelineList = document.getElementById("homeTimelineList");
 const roomDetailHome = document.getElementById("roomDetailHome");
 const roomDetailTitle = document.getElementById("roomDetailTitle");
 const roomDetailMeta = document.getElementById("roomDetailMeta");
+const roomDetailInfrastructureCount = document.getElementById("roomDetailInfrastructureCount");
 const roomDetailDocumentCount = document.getElementById("roomDetailDocumentCount");
 const roomDetailEventCount = document.getElementById("roomDetailEventCount");
+const roomDetailInfrastructure = document.getElementById("roomDetailInfrastructure");
 const roomDetailDocuments = document.getElementById("roomDetailDocuments");
 const roomDetailTimeline = document.getElementById("roomDetailTimeline");
 
@@ -34,6 +36,7 @@ const modals = {
   room: document.getElementById("roomModal"),
   document: document.getElementById("documentModal"),
   timeline: document.getElementById("timelineModal"),
+  infrastructure: document.getElementById("infrastructureModal"),
 };
 
 const homeForm = document.getElementById("homeForm");
@@ -66,11 +69,25 @@ const timelineDescriptionInput = document.getElementById("timelineDescription");
 const timelineStatus = document.getElementById("timelineStatus");
 const saveTimelineEventButton = document.getElementById("saveTimelineEvent");
 
+const infrastructureForm = document.getElementById("infrastructureForm");
+const infrastructureHomeSelect = document.getElementById("infrastructureHomeId");
+const infrastructureRoomSelect = document.getElementById("infrastructureRoomId");
+const infrastructureTypeSelect = document.getElementById("infrastructureType");
+const infrastructureTitleInput = document.getElementById("infrastructureTitle");
+const infrastructureLocationInput = document.getElementById("infrastructureLocation");
+const infrastructureRiskSelect = document.getElementById("infrastructureRisk");
+const infrastructureConfidenceSelect = document.getElementById("infrastructureConfidence");
+const infrastructureDocumentSelect = document.getElementById("infrastructureDocumentId");
+const infrastructureNotesInput = document.getElementById("infrastructureNotes");
+const infrastructureStatus = document.getElementById("infrastructureStatus");
+const saveInfrastructureButton = document.getElementById("saveInfrastructure");
+
 let currentUser = null;
 let homes = [];
 let rooms = [];
 let documents = [];
 let timelineEvents = [];
+let infrastructureItems = [];
 let selectedHomeId = null;
 let selectedRoomId = null;
 
@@ -93,8 +110,18 @@ const showActionError = (message) => {
   alert(message || "Something went wrong. Please try again.");
 };
 
+const getDashboardErrorMessage = (error) => {
+  const message = error?.message ?? "Something went wrong while loading the dashboard.";
+
+  if (message.includes("room_infrastructure")) {
+    return "Infrastructure table is missing. Run schema.sql in Supabase SQL Editor, then refresh this page.";
+  }
+
+  return message;
+};
+
 const clearModalStatuses = () => {
-  [homeStatus, roomStatus, documentStatus, timelineStatus].forEach((status) => {
+  [homeStatus, roomStatus, documentStatus, timelineStatus, infrastructureStatus].forEach((status) => {
     setStatus(status, "");
   });
 };
@@ -106,8 +133,10 @@ const getHomeDocuments = (homeId) => documents.filter((doc) => doc.home_id === h
 const getHomeEvents = (homeId) => timelineEvents.filter((event) => event.home_id === homeId);
 const getRoomDocuments = (roomId) => documents.filter((doc) => doc.room_id === roomId);
 const getRoomEvents = (roomId) => timelineEvents.filter((event) => event.room_id === roomId);
+const getRoomInfrastructure = (roomId) => infrastructureItems.filter((item) => item.room_id === roomId);
 const getHomeAddress = (homeId) => homes.find((home) => home.id === homeId)?.address ?? "Unknown home";
 const getRoomName = (roomId) => rooms.find((room) => room.id === roomId)?.name ?? "Whole home";
+const getDocumentTitle = (documentId) => documents.find((doc) => doc.id === documentId)?.title ?? "";
 
 const formatSquareMeters = (value) => {
   const number = Number(value);
@@ -188,6 +217,50 @@ const renderEmptyState = (container, title, detail = "") => {
 
 const createStatLine = (items) => items.filter(Boolean).join(" - ");
 
+const createInfrastructureItem = (item) => {
+  const article = document.createElement("article");
+  const details = document.createElement("div");
+  const header = document.createElement("div");
+  const title = document.createElement("h4");
+  const risk = document.createElement("span");
+  const meta = document.createElement("p");
+  const location = document.createElement("p");
+  const deleteButton = document.createElement("button");
+
+  article.className = "list-item infrastructure-item";
+  header.className = "item-header";
+  title.textContent = item.title;
+  risk.className = `risk-pill risk-${item.risk_level.toLowerCase()}`;
+  risk.textContent = `${item.risk_level} risk`;
+
+  meta.textContent = createStatLine([
+    item.infrastructure_type,
+    `${item.confidence_level} confidence`,
+    item.source_document_id ? `Evidence: ${getDocumentTitle(item.source_document_id) || "Linked document"}` : "",
+  ]);
+
+  location.className = "item-description";
+  location.textContent = item.location_note;
+
+  header.append(title, risk);
+  details.append(header, meta, location);
+
+  if (item.notes) {
+    const notes = document.createElement("p");
+    notes.className = "item-description";
+    notes.textContent = item.notes;
+    details.append(notes);
+  }
+
+  deleteButton.className = "danger-text-button";
+  deleteButton.type = "button";
+  deleteButton.textContent = "Delete";
+  deleteButton.addEventListener("click", () => handleDeleteInfrastructure(item.id));
+
+  article.append(details, deleteButton);
+  return article;
+};
+
 const createDocumentItem = (doc) => {
   const item = document.createElement("article");
   const details = document.createElement("div");
@@ -251,6 +324,7 @@ const createTimelineItem = (event) => {
 };
 
 const createRoomCard = (room) => {
+  const roomInfrastructure = getRoomInfrastructure(room.id);
   const roomDocuments = getRoomDocuments(room.id);
   const roomEvents = getRoomEvents(room.id);
   const card = document.createElement("article");
@@ -265,6 +339,7 @@ const createRoomCard = (room) => {
   title.textContent = room.name;
   meta.textContent = createStatLine([
     room.room_type,
+    `${roomInfrastructure.length} infrastructure`,
     `${roomDocuments.length} document${roomDocuments.length === 1 ? "" : "s"}`,
     `${roomEvents.length} event${roomEvents.length === 1 ? "" : "s"}`,
   ]);
@@ -389,12 +464,21 @@ const renderRoomDetail = () => {
 
   const roomDocuments = getRoomDocuments(room.id);
   const roomEvents = getRoomEvents(room.id);
+  const roomInfrastructure = getRoomInfrastructure(room.id);
 
   roomDetailHome.textContent = getHomeAddress(room.home_id);
   roomDetailTitle.textContent = room.name;
   roomDetailMeta.textContent = room.room_type;
+  roomDetailInfrastructureCount.textContent = roomInfrastructure.length;
   roomDetailDocumentCount.textContent = roomDocuments.length;
   roomDetailEventCount.textContent = roomEvents.length;
+
+  roomDetailInfrastructure.replaceChildren();
+  if (roomInfrastructure.length) {
+    for (const item of roomInfrastructure) roomDetailInfrastructure.append(createInfrastructureItem(item));
+  } else {
+    renderEmptyState(roomDetailInfrastructure, "No infrastructure notes yet", "Add hidden systems, risk zones, and evidence notes for this room.");
+  }
 
   roomDetailDocuments.replaceChildren();
   if (roomDocuments.length) {
@@ -476,9 +560,32 @@ const populateRoomSelect = (select, homeId, includeWholeHome = false) => {
   select.disabled = !includeWholeHome && !selectableRooms.length;
 };
 
+const populateInfrastructureDocumentSelect = () => {
+  const selectedValue = infrastructureDocumentSelect.value;
+  const selectableDocuments = documents.filter((doc) => doc.room_id === infrastructureRoomSelect.value);
+
+  infrastructureDocumentSelect.replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = selectableDocuments.length ? "No linked document" : "No room documents yet";
+  infrastructureDocumentSelect.append(placeholder);
+
+  for (const doc of selectableDocuments) {
+    const option = document.createElement("option");
+    option.value = doc.id;
+    option.textContent = doc.title;
+    infrastructureDocumentSelect.append(option);
+  }
+
+  infrastructureDocumentSelect.value = selectableDocuments.some((doc) => doc.id === selectedValue) ? selectedValue : "";
+  infrastructureDocumentSelect.disabled = !infrastructureRoomSelect.value || !selectableDocuments.length;
+};
+
 const updateModalDisabledStates = () => {
   const hasHomes = Boolean(homes.length);
   const documentHasRoom = Boolean(documentRoomSelect.value);
+  const infrastructureHasRoom = Boolean(infrastructureRoomSelect.value);
 
   roomNameInput.disabled = !hasHomes;
   roomTypeSelect.disabled = !hasHomes;
@@ -492,15 +599,25 @@ const updateModalDisabledStates = () => {
   timelineTitleInput.disabled = !hasHomes;
   timelineDescriptionInput.disabled = !hasHomes;
   saveTimelineEventButton.disabled = !hasHomes;
+  infrastructureTypeSelect.disabled = !infrastructureHasRoom;
+  infrastructureTitleInput.disabled = !infrastructureHasRoom;
+  infrastructureLocationInput.disabled = !infrastructureHasRoom;
+  infrastructureRiskSelect.disabled = !infrastructureHasRoom;
+  infrastructureConfidenceSelect.disabled = !infrastructureHasRoom;
+  infrastructureNotesInput.disabled = !infrastructureHasRoom;
+  saveInfrastructureButton.disabled = !infrastructureHasRoom;
 };
 
 const populateModalSelects = () => {
   populateHomeSelect(roomHomeSelect, "Select home");
   populateHomeSelect(documentHomeSelect, "Select home");
   populateHomeSelect(timelineHomeSelect, "Select home");
+  populateHomeSelect(infrastructureHomeSelect, "Select home");
 
   populateRoomSelect(documentRoomSelect, documentHomeSelect.value, false);
   populateRoomSelect(timelineRoomSelect, timelineHomeSelect.value, true);
+  populateRoomSelect(infrastructureRoomSelect, infrastructureHomeSelect.value, false);
+  populateInfrastructureDocumentSelect();
   updateModalDisabledStates();
 };
 
@@ -509,8 +626,10 @@ const preselectModalContext = (name) => {
     roomHomeSelect.value = selectedHomeId;
     documentHomeSelect.value = selectedHomeId;
     timelineHomeSelect.value = selectedHomeId;
+    infrastructureHomeSelect.value = selectedHomeId;
     populateRoomSelect(documentRoomSelect, selectedHomeId, false);
     populateRoomSelect(timelineRoomSelect, selectedHomeId, true);
+    populateRoomSelect(infrastructureRoomSelect, selectedHomeId, false);
   }
 
   if (selectedRoomId) {
@@ -518,10 +637,14 @@ const preselectModalContext = (name) => {
     if (room) {
       documentHomeSelect.value = room.home_id;
       timelineHomeSelect.value = room.home_id;
+      infrastructureHomeSelect.value = room.home_id;
       populateRoomSelect(documentRoomSelect, room.home_id, false);
       populateRoomSelect(timelineRoomSelect, room.home_id, true);
+      populateRoomSelect(infrastructureRoomSelect, room.home_id, false);
       documentRoomSelect.value = room.id;
       timelineRoomSelect.value = room.id;
+      infrastructureRoomSelect.value = room.id;
+      populateInfrastructureDocumentSelect();
     }
   }
 
@@ -583,12 +706,24 @@ const loadTimelineEvents = async () => {
   timelineEvents = data ?? [];
 };
 
+const loadInfrastructure = async () => {
+  const { data, error } = await supabase
+    .from("room_infrastructure")
+    .select("id,home_id,room_id,infrastructure_type,title,location_note,risk_level,confidence_level,source_document_id,notes,created_at")
+    .eq("owner_id", currentUser.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  infrastructureItems = data ?? [];
+};
+
 const refreshDashboard = async () => {
   try {
     await loadHomes();
     await loadRooms();
     await loadDocuments();
     await loadTimelineEvents();
+    await loadInfrastructure();
 
     if (selectedHomeId && !homes.some((home) => home.id === selectedHomeId)) {
       selectedHomeId = null;
@@ -604,7 +739,7 @@ const refreshDashboard = async () => {
     populateModalSelects();
     renderApp();
   } catch (error) {
-    renderEmptyState(homesGrid, "Could not load dashboard", error.message);
+    renderEmptyState(homesGrid, "Could not load dashboard", getDashboardErrorMessage(error));
     showView("homes");
   }
 };
@@ -614,9 +749,11 @@ const validateHomePayload = (payload) => {
 
   if (!payload.address || payload.address.length < 3) throw new Error("Address must be at least 3 characters");
   if (!payload.property_type) throw new Error("Property type is required");
+  if (!Number.isInteger(payload.year_built)) throw new Error("Year built must be a whole number");
   if (payload.year_built < 1600 || payload.year_built > currentYear) {
     throw new Error(`Year built must be between 1600 and ${currentYear}`);
   }
+  if (!Number.isFinite(payload.square_meters)) throw new Error("Square meters must be a valid number");
   if (payload.square_meters <= 0) throw new Error("Square meters must be greater than 0");
 };
 
@@ -655,6 +792,28 @@ const validateTimelinePayload = (payload) => {
   if (eventDate > today) throw new Error("Timeline events cannot be in the future");
   if (!payload.event_type) throw new Error("Event type is required");
   if (!payload.title || payload.title.length < 3) throw new Error("Event title must be at least 3 characters");
+};
+
+const validateInfrastructurePayload = (payload) => {
+  const allowedRiskLevels = ["Low", "Medium", "High"];
+  const allowedConfidenceLevels = ["Low", "Medium", "High"];
+
+  if (!payload.home_id) throw new Error("Choose a home for this infrastructure note");
+  if (!payload.room_id) throw new Error("Choose a room for this infrastructure note");
+  if (!rooms.some((room) => room.id === payload.room_id && room.home_id === payload.home_id)) {
+    throw new Error("Selected room does not belong to the selected home");
+  }
+  if (!payload.infrastructure_type) throw new Error("Infrastructure type is required");
+  if (!payload.title || payload.title.length < 3) throw new Error("Title must be at least 3 characters");
+  if (!payload.location_note || payload.location_note.length < 3) throw new Error("Location must be at least 3 characters");
+  if (!allowedRiskLevels.includes(payload.risk_level)) throw new Error("Choose a valid risk level");
+  if (!allowedConfidenceLevels.includes(payload.confidence_level)) throw new Error("Choose a valid confidence level");
+  if (
+    payload.source_document_id &&
+    !documents.some((doc) => doc.id === payload.source_document_id && doc.home_id === payload.home_id && doc.room_id === payload.room_id)
+  ) {
+    throw new Error("Linked document does not belong to the selected room");
+  }
 };
 
 const sanitizeFileName = (fileName) => {
@@ -844,6 +1003,46 @@ const handleCreateTimelineEvent = async (event) => {
   }
 };
 
+const handleCreateInfrastructure = async (event) => {
+  event.preventDefault();
+  setStatus(infrastructureStatus, "");
+  setFormDisabled(infrastructureForm, true);
+  saveInfrastructureButton.textContent = "Saving...";
+
+  try {
+    const payload = {
+      owner_id: currentUser.id,
+      home_id: infrastructureHomeSelect.value,
+      room_id: infrastructureRoomSelect.value,
+      infrastructure_type: infrastructureTypeSelect.value,
+      title: infrastructureTitleInput.value.trim(),
+      location_note: infrastructureLocationInput.value.trim(),
+      risk_level: infrastructureRiskSelect.value,
+      confidence_level: infrastructureConfidenceSelect.value,
+      source_document_id: infrastructureDocumentSelect.value || null,
+      notes: infrastructureNotesInput.value.trim() || null,
+    };
+
+    validateInfrastructurePayload(payload);
+    const { error } = await supabase.from("room_infrastructure").insert(payload);
+    if (error) throw error;
+
+    selectedHomeId = payload.home_id;
+    selectedRoomId = payload.room_id;
+    infrastructureForm.reset();
+    closeModal();
+    setStatus(infrastructureStatus, "Infrastructure note saved successfully!", "success");
+    await refreshDashboard();
+    showView("room");
+  } catch (error) {
+    setStatus(infrastructureStatus, error.message, "error");
+  } finally {
+    setFormDisabled(infrastructureForm, false);
+    saveInfrastructureButton.textContent = "Save infrastructure";
+    populateModalSelects();
+  }
+};
+
 const handleOpenDocument = async (doc) => {
   const documentWindow = window.open("about:blank", "_blank");
   if (documentWindow) documentWindow.opener = null;
@@ -891,7 +1090,7 @@ const handleDeleteHome = async (homeId) => {
 };
 
 const handleDeleteRoom = async (roomId) => {
-  if (!confirm("Delete this room? Its documents will be removed. Its history will stay in the home timeline.")) return;
+  if (!confirm("Delete this room? Its infrastructure notes and documents will be removed. Its history will stay in the home timeline.")) return;
 
   const roomDocuments = getRoomDocuments(roomId);
   const { error } = await supabase.from("rooms").delete().eq("id", roomId);
@@ -943,6 +1142,18 @@ const handleDeleteTimelineEvent = async (eventId) => {
   await refreshDashboard();
 };
 
+const handleDeleteInfrastructure = async (infrastructureId) => {
+  if (!confirm("Delete this infrastructure note?")) return;
+
+  const { error } = await supabase.from("room_infrastructure").delete().eq("id", infrastructureId);
+  if (error) {
+    showActionError(`Could not delete infrastructure note: ${error.message}`);
+    return;
+  }
+
+  await refreshDashboard();
+};
+
 const initDashboard = async () => {
   const { data, error } = await supabase.auth.getUser();
 
@@ -960,6 +1171,8 @@ document.getElementById("openHomeModal").addEventListener("click", () => openAct
 document.getElementById("openRoomModal").addEventListener("click", () => openActionModal("room"));
 document.getElementById("openDocumentModal").addEventListener("click", () => openActionModal("document"));
 document.getElementById("openTimelineModal").addEventListener("click", () => openActionModal("timeline"));
+document.getElementById("openRoomInfrastructureModal").addEventListener("click", () => openActionModal("infrastructure"));
+document.getElementById("openRoomInfrastructureModalSecondary").addEventListener("click", () => openActionModal("infrastructure"));
 document.getElementById("openRoomDocumentModal").addEventListener("click", () => openActionModal("document"));
 document.getElementById("openRoomTimelineModal").addEventListener("click", () => openActionModal("timeline"));
 document.getElementById("backToHomes").addEventListener("click", () => {
@@ -992,9 +1205,15 @@ roomHomeSelect.addEventListener("change", populateModalSelects);
 documentHomeSelect.addEventListener("change", populateModalSelects);
 documentRoomSelect.addEventListener("change", updateModalDisabledStates);
 timelineHomeSelect.addEventListener("change", populateModalSelects);
+infrastructureHomeSelect.addEventListener("change", populateModalSelects);
+infrastructureRoomSelect.addEventListener("change", () => {
+  populateInfrastructureDocumentSelect();
+  updateModalDisabledStates();
+});
 homeForm.addEventListener("submit", handleCreateHome);
 roomForm.addEventListener("submit", handleCreateRoom);
 documentForm.addEventListener("submit", handleUploadDocument);
 timelineForm.addEventListener("submit", handleCreateTimelineEvent);
+infrastructureForm.addEventListener("submit", handleCreateInfrastructure);
 
 initDashboard();

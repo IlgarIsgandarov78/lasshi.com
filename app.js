@@ -81,7 +81,7 @@ if (loginForm) {
 
       window.location.href = "./dashboard.html";
     } catch (err) {
-      alert("An unexpected error occurred. Please try again.");
+      alert(`An unexpected error occurred: ${err.message || "Please try again."}`);
     } finally {
       inputs.forEach(input => {
         input.disabled = false;
@@ -159,7 +159,7 @@ if (registerForm) {
       alert("Account created. Please check your email to confirm your account.");
       window.showLogin();
     } catch (err) {
-      alert("An unexpected error occurred. Please try again.");
+      alert(`An unexpected error occurred: ${err.message || "Please try again."}`);
     } finally {
       inputs.forEach(input => {
         input.disabled = false;
