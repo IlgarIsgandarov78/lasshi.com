@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -149,23 +149,92 @@
             <div>
               <p id="layoutHomeMeta" class="eyebrow">Home layout</p>
               <h2 id="layoutHomeTitle">Layout</h2>
-              <p class="muted">Move and resize rooms to create a simple visual map of the home record.</p>
+              <p class="muted">Build a clean floor plan from scratch, then add the details you know are true.</p>
             </div>
-            <div class="action-row">
+            <div id="layoutEditorActions" class="action-row">
               <button id="saveLayout" class="primary-button" type="button">Save layout</button>
-              <button id="resetLayout" class="secondary-button" type="button">Reset layout</button>
+              <button id="resetLayout" class="secondary-button" type="button">Reset to model</button>
             </div>
           </div>
 
+          <section id="layoutStartPanel" class="layout-start-panel layout-manual-only" aria-label="Create floor plan">
+            <div class="layout-start-card">
+              <span class="layout-start-icon manual" aria-hidden="true"></span>
+              <div>
+                <h3>Build from scratch</h3>
+                <p>First set up the floors in this home. Then place rooms on the correct floor and add details yourself.</p>
+                <label class="floor-count-field">
+                  Number of floors
+                  <input id="layoutFloorCount" type="number" min="1" max="8" value="2" />
+                </label>
+                <button id="buildFloorPlan" class="secondary-button compact-button" type="button">Create floors and start</button>
+              </div>
+            </div>
+          </section>
+
           <p id="layoutStatus" class="status-message" role="status"></p>
-          <div id="layoutCanvas" class="layout-canvas" aria-label="2D home layout"></div>
+          <div id="layoutModelBar" class="layout-model-bar">
+            <span id="layoutSourceBadge">Manual model</span>
+            <button id="setLayoutBaseline" class="text-button" type="button">Set current as reset model</button>
+          </div>
+          <div id="layoutFloorTabs" class="layout-floor-tabs" aria-label="Floors"></div>
+          <div id="layoutFloorTools" class="layout-floor-tools">
+            <input id="newFloorName" type="text" placeholder="Basement, Floor 2, Loft" />
+            <button id="addFloor" class="secondary-button compact-button" type="button">Add floor</button>
+          </div>
+          <div id="layoutRoomPlacement" class="layout-room-placement">
+            <div>
+              <label for="layoutAddRoomSelect" class="search-label">Add existing room to this floor</label>
+              <select id="layoutAddRoomSelect"></select>
+            </div>
+            <button id="addRoomToFloor" class="secondary-button compact-button" type="button">Add to floor</button>
+            <button id="createRoomOnFloor" class="primary-button compact-button" type="button">Create room on this floor</button>
+          </div>
+          <div id="layoutCanvas" class="layout-canvas hidden" aria-label="2D home layout"></div>
         </div>
 
-        <aside class="layout-sidebar">
+        <aside id="layoutSidebar" class="layout-sidebar hidden">
           <div>
             <p class="eyebrow">Selected room</p>
             <h3 id="layoutRoomTitle">Choose a room</h3>
             <p id="layoutRoomMeta" class="muted">Select a room on the layout to see its record.</p>
+          </div>
+          <div class="layout-tool-panel">
+            <label>
+              Room floor
+              <select id="layoutRoomFloorSelect"></select>
+            </label>
+          </div>
+          <div class="layout-tool-panel">
+            <label>
+              Room dimensions
+              <input id="layoutDimensionsInput" type="text" placeholder="Example: 12'-0&quot; x 10'-0&quot;" />
+            </label>
+          </div>
+          <div class="layout-tool-panel">
+            <strong>Doors and windows</strong>
+            <div class="tool-grid">
+              <button class="secondary-button compact-button" id="addDoor" type="button">Add door</button>
+              <button class="secondary-button compact-button" id="addWindow" type="button">Add window</button>
+            </div>
+            <p class="tool-hint">Drag doors or windows along the nearest wall.</p>
+          </div>
+          <div class="layout-tool-panel">
+            <strong>Fixtures</strong>
+            <div class="fixture-palette">
+              <button type="button" data-fixture="toilet">Toilet</button>
+              <button type="button" data-fixture="sink">Sink</button>
+              <button type="button" data-fixture="bath">Bath</button>
+              <button type="button" data-fixture="shower">Shower</button>
+              <button type="button" data-fixture="washer">Washer</button>
+              <button type="button" data-fixture="dryer">Dryer</button>
+              <button type="button" data-fixture="stove">Stove</button>
+              <button type="button" data-fixture="fridge">Fridge</button>
+              <button type="button" data-fixture="counter">Counter</button>
+              <button type="button" data-fixture="bed">Bed</button>
+            </div>
+            <p class="tool-hint">Add an item, then drag it into place.</p>
+            <button id="removeSelectedPlanItem" class="danger-button compact-button" type="button" disabled>Remove selected item</button>
           </div>
           <div id="layoutRoomStats" class="layout-room-stats"></div>
           <div class="layout-room-actions">
@@ -519,6 +588,6 @@
     </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=11"></script>
+  <script type="module" src="dashboard.js?v=12"></script>
 </body>
 </html>

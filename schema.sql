@@ -607,6 +607,91 @@ using (
   )
 );
 
+create table if not exists public.home_floors (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.homes(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (home_id, name)
+);
+
+create index if not exists home_floors_home_id_idx on public.home_floors(home_id);
+create index if not exists home_floors_owner_id_idx on public.home_floors(owner_id);
+
+alter table public.home_floors enable row level security;
+
+drop policy if exists "Users can read floors for their own homes" on public.home_floors;
+create policy "Users can read floors for their own homes"
+on public.home_floors
+for select
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.homes
+    where homes.id = home_floors.home_id
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create floors for their own homes" on public.home_floors;
+create policy "Users can create floors for their own homes"
+on public.home_floors
+for insert
+to authenticated
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.homes
+    where homes.id = home_floors.home_id
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can update floors for their own homes" on public.home_floors;
+create policy "Users can update floors for their own homes"
+on public.home_floors
+for update
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.homes
+    where homes.id = home_floors.home_id
+      and homes.owner_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.homes
+    where homes.id = home_floors.home_id
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can delete floors for their own homes" on public.home_floors;
+create policy "Users can delete floors for their own homes"
+on public.home_floors
+for delete
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.homes
+    where homes.id = home_floors.home_id
+      and homes.owner_id = auth.uid()
+  )
+);
+
 create table if not exists public.room_layouts (
   id uuid primary key default gen_random_uuid(),
   home_id uuid not null references public.homes(id) on delete cascade,
@@ -616,10 +701,30 @@ create table if not exists public.room_layouts (
   y numeric(6, 2) not null check (y >= 0 and y <= 100),
   width numeric(6, 2) not null check (width > 0 and width <= 100),
   height numeric(6, 2) not null check (height > 0 and height <= 100),
+  floor_name text not null default 'Main Floor',
+  dimensions_label text,
+  plan_features jsonb not null default '{"openings":[],"fixtures":[]}'::jsonb,
+  baseline_layout jsonb,
+  baseline_features jsonb not null default '{"openings":[],"fixtures":[]}'::jsonb,
+  baseline_source text not null default 'manual' check (baseline_source in ('manual')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (room_id)
 );
+
+alter table public.room_layouts
+  add column if not exists floor_name text not null default 'Main Floor',
+  add column if not exists dimensions_label text,
+  add column if not exists plan_features jsonb not null default '{"openings":[],"fixtures":[]}'::jsonb,
+  add column if not exists baseline_layout jsonb,
+  add column if not exists baseline_features jsonb not null default '{"openings":[],"fixtures":[]}'::jsonb,
+  add column if not exists baseline_source text not null default 'manual';
+
+alter table public.room_layouts
+  drop constraint if exists room_layouts_baseline_source_check;
+
+alter table public.room_layouts
+  add constraint room_layouts_baseline_source_check check (baseline_source in ('manual'));
 
 create index if not exists room_layouts_home_id_idx on public.room_layouts(home_id);
 create index if not exists room_layouts_room_id_idx on public.room_layouts(room_id);

@@ -34,12 +34,33 @@ const homeTimelineList = document.getElementById("homeTimelineList");
 
 const layoutHomeMeta = document.getElementById("layoutHomeMeta");
 const layoutHomeTitle = document.getElementById("layoutHomeTitle");
+const layoutStartPanel = document.getElementById("layoutStartPanel");
+const layoutEditorActions = document.getElementById("layoutEditorActions");
+const layoutModelBar = document.getElementById("layoutModelBar");
 const layoutCanvas = document.getElementById("layoutCanvas");
+const layoutSidebar = document.getElementById("layoutSidebar");
 const layoutStatus = document.getElementById("layoutStatus");
+const buildFloorPlanButton = document.getElementById("buildFloorPlan");
+const setLayoutBaselineButton = document.getElementById("setLayoutBaseline");
+const layoutSourceBadge = document.getElementById("layoutSourceBadge");
 const saveLayoutButton = document.getElementById("saveLayout");
 const resetLayoutButton = document.getElementById("resetLayout");
 const layoutRoomTitle = document.getElementById("layoutRoomTitle");
 const layoutRoomMeta = document.getElementById("layoutRoomMeta");
+const layoutFloorCountInput = document.getElementById("layoutFloorCount");
+const layoutFloorTabs = document.getElementById("layoutFloorTabs");
+const layoutFloorTools = document.getElementById("layoutFloorTools");
+const layoutRoomPlacement = document.getElementById("layoutRoomPlacement");
+const newFloorNameInput = document.getElementById("newFloorName");
+const addFloorButton = document.getElementById("addFloor");
+const layoutAddRoomSelect = document.getElementById("layoutAddRoomSelect");
+const addRoomToFloorButton = document.getElementById("addRoomToFloor");
+const createRoomOnFloorButton = document.getElementById("createRoomOnFloor");
+const layoutRoomFloorSelect = document.getElementById("layoutRoomFloorSelect");
+const layoutDimensionsInput = document.getElementById("layoutDimensionsInput");
+const addDoorButton = document.getElementById("addDoor");
+const addWindowButton = document.getElementById("addWindow");
+const removeSelectedPlanItemButton = document.getElementById("removeSelectedPlanItem");
 const layoutRoomStats = document.getElementById("layoutRoomStats");
 const openSelectedRoomButton = document.getElementById("openSelectedRoom");
 const uploadSelectedRoomDocumentButton = document.getElementById("uploadSelectedRoomDocument");
@@ -125,6 +146,7 @@ const jobBriefOutput = document.getElementById("jobBriefOutput");
 let currentUser = null;
 let homes = [];
 let rooms = [];
+let homeFloors = [];
 let roomLayouts = [];
 let documents = [];
 let timelineEvents = [];
@@ -134,9 +156,15 @@ let selectedHomeId = null;
 let selectedRoomId = null;
 let selectedLayoutRoomId = null;
 let layoutDrafts = new Map();
+let baselineDrafts = new Map();
 let layoutDraftHomeId = null;
+let layoutEditorStarted = false;
+let activeFloorName = "Main Floor";
 let layoutDirty = false;
+let baselineDirty = false;
 let roomLayoutsAvailable = true;
+let selectedPlanItem = null;
+let pendingLayoutRoomFloorName = null;
 let generatedJobBriefText = "";
 let timelineEvidenceAvailable = true;
 let isOnboardingHomeCreate = false;
@@ -148,6 +176,9 @@ const starterRooms = [
   { name: "Bedroom", room_type: "Bedroom" },
   { name: "Utility", room_type: "Utility room" },
 ];
+
+const emptyPlanFeatures = { openings: [], fixtures: [] };
+const UNASSIGNED_FLOOR = "__unassigned__";
 
 const setStatus = (element, message, type = "") => {
   const className = `status-message ${type}`.trim();
@@ -187,6 +218,21 @@ const clearModalStatuses = () => {
 const getSelectedHome = () => homes.find((home) => home.id === selectedHomeId);
 const getSelectedRoom = () => rooms.find((room) => room.id === selectedRoomId);
 const getHomeRooms = (homeId) => rooms.filter((room) => room.home_id === homeId);
+const getHomeFloors = (homeId) => {
+  const explicitFloors = homeFloors.filter((floor) => floor.home_id === homeId);
+  const floorNames = new Set(explicitFloors.map((floor) => floor.name));
+
+  roomLayouts
+    .filter((layout) => layout.home_id === homeId && layout.floor_name && layout.floor_name !== UNASSIGNED_FLOOR)
+    .forEach((layout) => floorNames.add(layout.floor_name));
+
+  if (!floorNames.size) floorNames.add("Main Floor");
+
+  const explicitOrder = new Map(explicitFloors.map((floor) => [floor.name, floor.sort_order]));
+  return Array.from(floorNames)
+    .map((name) => ({ name, sort_order: explicitOrder.get(name) ?? 999 }))
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+};
 const getHomeDocuments = (homeId) => documents.filter((doc) => doc.home_id === homeId);
 const getHomeEvents = (homeId) => timelineEvents.filter((event) => event.home_id === homeId);
 const getHomeInfrastructure = (homeId) => infrastructureItems.filter((item) => item.home_id === homeId);
@@ -203,6 +249,39 @@ const getEventDocuments = (eventId) => {
 };
 const getRoomLayout = (roomId) => roomLayouts.find((layout) => layout.room_id === roomId);
 const getLayoutDraft = (roomId) => layoutDrafts.get(roomId);
+const getBaselineDraft = (roomId) => baselineDrafts.get(roomId);
+
+const cloneJson = (value) => JSON.parse(JSON.stringify(value ?? null));
+
+const getDefaultFeatures = () => cloneJson(emptyPlanFeatures);
+
+const normalizeFeatures = (features, room) => {
+  const fallback = getDefaultFeatures(room);
+  let value = features;
+
+  if (typeof features === "string") {
+    try {
+      value = JSON.parse(features || "{}");
+    } catch {
+      value = {};
+    }
+  }
+
+  const openings = Array.isArray(value?.openings) ? value.openings : fallback.openings;
+  const fixtures = Array.isArray(value?.fixtures) ? value.fixtures : fallback.fixtures;
+
+  return { openings, fixtures };
+};
+
+const getDefaultDimensionsLabel = () => "Add dimensions";
+
+const getDefaultFloorNames = (count) => {
+  const safeCount = clamp(Number(count) || 1, 1, 8);
+  return Array.from({ length: safeCount }, (_, index) => {
+    if (index === 0) return "Main Floor";
+    return `Floor ${index + 1}`;
+  });
+};
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -393,7 +472,7 @@ const renderHomeNextSteps = (homeId) => {
   homeNextSteps.replaceChildren(copy, actions);
 };
 
-const getDefaultLayout = (index, total) => {
+const getDefaultLayout = (index, total, room = null) => {
   const columns = total <= 1 ? 1 : total <= 4 ? 2 : 3;
   const rows = Math.ceil(total / columns);
   const gap = 3;
@@ -407,11 +486,15 @@ const getDefaultLayout = (index, total) => {
     y: gap + row * (height + gap),
     width,
     height,
+    floor_name: UNASSIGNED_FLOOR,
+    dimensions_label: room ? getDefaultDimensionsLabel(room) : "Add dimensions",
+    plan_features: getDefaultFeatures(),
+    baseline_source: "manual",
   };
 };
 
-const normalizeLayout = (layout, index, total) => {
-  const fallback = getDefaultLayout(index, total);
+const normalizeLayout = (layout, index, total, room = null) => {
+  const fallback = getDefaultLayout(index, total, room);
   const width = clamp(Number(layout?.width ?? fallback.width), 12, 96);
   const height = clamp(Number(layout?.height ?? fallback.height), 10, 96);
 
@@ -420,33 +503,94 @@ const normalizeLayout = (layout, index, total) => {
     y: clamp(Number(layout?.y ?? fallback.y), 0, 100 - height),
     width,
     height,
+    floor_name: layout?.floor_name || fallback.floor_name,
+    dimensions_label: layout?.dimensions_label || fallback.dimensions_label,
+    plan_features: normalizeFeatures(layout?.plan_features, room),
+    baseline_source: layout?.baseline_source || fallback.baseline_source,
   };
+};
+
+const getPersistedBaselineLayout = (layout, room, index, total) => {
+  if (layout?.baseline_layout) {
+    return normalizeLayout({
+      ...layout.baseline_layout,
+      baseline_source: layout.baseline_source,
+    }, index, total, room);
+  }
+
+  return normalizeLayout(layout, index, total, room);
 };
 
 const syncLayoutDrafts = (homeId, force = false) => {
   const homeRooms = getHomeRooms(homeId);
 
   if (force || layoutDraftHomeId !== homeId || (!layoutDirty && layoutDrafts.size !== homeRooms.length)) {
-    layoutDrafts = new Map(homeRooms.map((room, index) => [
-      room.id,
-      normalizeLayout(getRoomLayout(room.id), index, homeRooms.length),
-    ]));
+    layoutDrafts = new Map();
+    baselineDrafts = new Map();
+
+    homeRooms.forEach((room, index) => {
+      const storedLayout = getRoomLayout(room.id);
+      const draft = storedLayout
+        ? normalizeLayout(storedLayout, index, homeRooms.length, room)
+        : normalizeLayout({ floor_name: UNASSIGNED_FLOOR }, index, homeRooms.length, room);
+
+      layoutDrafts.set(room.id, draft);
+      baselineDrafts.set(room.id, storedLayout ? getPersistedBaselineLayout(storedLayout, room, index, homeRooms.length) : cloneJson(draft));
+    });
+
     layoutDraftHomeId = homeId;
     layoutDirty = false;
+    baselineDirty = false;
   }
 
   for (const [index, room] of homeRooms.entries()) {
     if (!layoutDrafts.has(room.id)) {
-      layoutDrafts.set(room.id, normalizeLayout(getRoomLayout(room.id), index, homeRooms.length));
-      layoutDirty = true;
+      const storedLayout = getRoomLayout(room.id);
+      const draft = storedLayout
+        ? normalizeLayout(storedLayout, index, homeRooms.length, room)
+        : normalizeLayout({ floor_name: UNASSIGNED_FLOOR }, index, homeRooms.length, room);
+      layoutDrafts.set(room.id, draft);
+      baselineDrafts.set(room.id, cloneJson(draft));
     }
   }
 };
 
+const homeHasSavedLayout = (homeId) => roomLayouts.some((layout) => layout.home_id === homeId);
+const homeHasFloors = (homeId) => homeFloors.some((floor) => floor.home_id === homeId) || homeHasSavedLayout(homeId);
+
+const updateLayoutModeVisibility = () => {
+  const hasSavedLayout = selectedHomeId ? homeHasSavedLayout(selectedHomeId) : false;
+  const showEditor = layoutEditorStarted || hasSavedLayout;
+
+  layoutStartPanel.classList.toggle("hidden", showEditor);
+  layoutStartPanel.classList.toggle("layout-choice-only", !showEditor);
+  layoutEditorActions.classList.toggle("hidden", !showEditor);
+  layoutModelBar.classList.toggle("hidden", !showEditor);
+  layoutFloorTabs.classList.toggle("hidden", !showEditor);
+  layoutFloorTools.classList.toggle("hidden", !showEditor);
+  layoutRoomPlacement.classList.toggle("hidden", !showEditor);
+  layoutCanvas.classList.toggle("hidden", !showEditor);
+  layoutSidebar.classList.toggle("hidden", !showEditor);
+};
+
 const updateLayoutControls = () => {
   const homeRooms = selectedHomeId ? getHomeRooms(selectedHomeId) : [];
-  saveLayoutButton.disabled = !roomLayoutsAvailable || !homeRooms.length || !layoutDirty;
-  resetLayoutButton.disabled = !homeRooms.length;
+  const firstRoom = homeRooms[0];
+  const firstBaseline = firstRoom ? getBaselineDraft(firstRoom.id) : null;
+  const showEditor = layoutEditorStarted || (selectedHomeId && homeHasSavedLayout(selectedHomeId));
+
+  saveLayoutButton.disabled = !showEditor || !roomLayoutsAvailable || !homeRooms.length || !layoutDirty;
+  resetLayoutButton.disabled = !showEditor || !homeRooms.length;
+  setLayoutBaselineButton.disabled = !showEditor || !homeRooms.length;
+  addDoorButton.disabled = !showEditor || !selectedLayoutRoomId;
+  addWindowButton.disabled = !showEditor || !selectedLayoutRoomId;
+  layoutDimensionsInput.disabled = !showEditor || !selectedLayoutRoomId;
+  layoutRoomFloorSelect.disabled = !showEditor || !selectedLayoutRoomId;
+  addFloorButton.disabled = !showEditor || !newFloorNameInput.value.trim();
+  addRoomToFloorButton.disabled = !showEditor || !layoutAddRoomSelect.value;
+  createRoomOnFloorButton.disabled = !showEditor || !selectedHomeId;
+  layoutSourceBadge.textContent = "Manual model";
+  removeSelectedPlanItemButton.disabled = !selectedPlanItem;
 
   if (!roomLayoutsAvailable) {
     setStatus(layoutStatus, "Layout saving needs the room_layouts table. Run the latest schema.sql in Supabase.", "error");
@@ -457,6 +601,7 @@ const updateLayoutControls = () => {
 
 const selectLayoutRoom = (roomId) => {
   selectedLayoutRoomId = roomId;
+  selectedPlanItem = null;
   renderLayoutRoomPanel();
 
   layoutCanvas.querySelectorAll(".layout-room").forEach((element) => {
@@ -472,19 +617,32 @@ const renderLayoutRoomPanel = () => {
   uploadSelectedRoomDocumentButton.disabled = disabled;
   addSelectedRoomNoteButton.disabled = disabled;
   layoutRoomStats.replaceChildren();
+  layoutDimensionsInput.value = "";
+  layoutRoomFloorSelect.replaceChildren();
 
   if (!room) {
     layoutRoomTitle.textContent = "Choose a room";
     layoutRoomMeta.textContent = "Select a room on the layout to see its record.";
+    updateLayoutControls();
     return;
   }
 
   const roomDocuments = getRoomDocuments(room.id);
   const roomEvents = getRoomEvents(room.id);
   const roomInfrastructure = getRoomInfrastructure(room.id);
+  const layout = getLayoutDraft(room.id);
+  const floors = selectedHomeId ? getHomeFloors(selectedHomeId) : [];
 
   layoutRoomTitle.textContent = room.name;
-  layoutRoomMeta.textContent = createStatLine([room.room_type, getHomeAddress(room.home_id)]);
+  layoutRoomMeta.textContent = createStatLine([room.room_type, layout?.dimensions_label, getHomeAddress(room.home_id)]);
+  layoutDimensionsInput.value = layout?.dimensions_label === "Add dimensions" ? "" : layout?.dimensions_label ?? "";
+  floors.forEach((floor) => {
+    const option = document.createElement("option");
+    option.value = floor.name;
+    option.textContent = floor.name;
+    layoutRoomFloorSelect.append(option);
+  });
+  layoutRoomFloorSelect.value = layout?.floor_name || activeFloorName;
 
   [
     ["Documents", roomDocuments.length],
@@ -495,12 +653,185 @@ const renderLayoutRoomPanel = () => {
     item.innerHTML = `<strong>${value}</strong>${label}`;
     layoutRoomStats.append(item);
   });
+
+  updateLayoutControls();
 };
 
 const setLayoutDirty = () => {
   layoutDirty = true;
   setStatus(layoutStatus, "Unsaved layout changes.");
   updateLayoutControls();
+};
+
+const updateSelectedRoomLayout = (updater) => {
+  if (!selectedLayoutRoomId) return;
+
+  const current = getLayoutDraft(selectedLayoutRoomId);
+  if (!current) return;
+
+  layoutDrafts.set(selectedLayoutRoomId, updater(cloneJson(current)));
+  setLayoutDirty();
+  renderLayout();
+};
+
+const updateSelectedRoomDimensions = () => {
+  updateSelectedRoomLayout((layout) => {
+    layout.dimensions_label = layoutDimensionsInput.value.trim() || "Add dimensions";
+    return layout;
+  });
+};
+
+const updateSelectedRoomFloor = () => {
+  const nextFloor = layoutRoomFloorSelect.value;
+  if (!nextFloor) return;
+
+  activeFloorName = nextFloor;
+  updateSelectedRoomLayout((layout) => {
+    layout.floor_name = nextFloor;
+    return layout;
+  });
+};
+
+const selectLayoutFloor = (floorName) => {
+  activeFloorName = floorName;
+  selectedLayoutRoomId = null;
+  selectedPlanItem = null;
+  renderLayout();
+};
+
+const renderLayoutFloors = () => {
+  const floors = selectedHomeId ? getHomeFloors(selectedHomeId) : [];
+  layoutFloorTabs.replaceChildren();
+
+  floors.forEach((floor) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = floor.name;
+    button.className = floor.name === activeFloorName ? "active" : "";
+    button.addEventListener("click", () => selectLayoutFloor(floor.name));
+    layoutFloorTabs.append(button);
+  });
+};
+
+const renderRoomPlacementOptions = () => {
+  const homeRooms = selectedHomeId ? getHomeRooms(selectedHomeId) : [];
+  const selectedValue = layoutAddRoomSelect.value;
+  layoutAddRoomSelect.replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = homeRooms.length ? "Select room" : "No rooms in this home yet";
+  layoutAddRoomSelect.append(placeholder);
+
+  homeRooms
+    .filter((room) => getLayoutDraft(room.id)?.floor_name !== activeFloorName)
+    .forEach((room) => {
+      const option = document.createElement("option");
+      const floorName = getLayoutDraft(room.id)?.floor_name ?? UNASSIGNED_FLOOR;
+      const floorLabel = floorName === UNASSIGNED_FLOOR ? "Unassigned" : floorName;
+      option.value = room.id;
+      option.textContent = `${room.name} (${floorLabel})`;
+      layoutAddRoomSelect.append(option);
+    });
+
+  layoutAddRoomSelect.value = Array.from(layoutAddRoomSelect.options).some((option) => option.value === selectedValue)
+    ? selectedValue
+    : "";
+};
+
+const moveRoomToActiveFloor = (roomId) => {
+  const room = rooms.find((item) => item.id === roomId);
+  if (!room || !selectedHomeId) return;
+
+  const homeRooms = getHomeRooms(selectedHomeId);
+  const index = Math.max(homeRooms.findIndex((item) => item.id === room.id), 0);
+  const currentLayout = getLayoutDraft(room.id) ?? normalizeLayout(null, index, homeRooms.length, room);
+  const nextLayout = {
+    ...cloneJson(currentLayout),
+    floor_name: activeFloorName,
+  };
+
+  layoutDrafts.set(room.id, nextLayout);
+  if (!baselineDrafts.has(room.id) || getBaselineDraft(room.id)?.floor_name === UNASSIGNED_FLOOR) {
+    baselineDrafts.set(room.id, cloneJson(nextLayout));
+  }
+  selectedLayoutRoomId = room.id;
+  selectedPlanItem = null;
+  layoutDirty = true;
+  setStatus(layoutStatus, `${room.name} added to ${activeFloorName}.`);
+  renderLayout();
+};
+
+const handleAddRoomToFloor = () => {
+  if (!layoutAddRoomSelect.value) return;
+  moveRoomToActiveFloor(layoutAddRoomSelect.value);
+};
+
+const openCreateRoomOnActiveFloor = () => {
+  if (!selectedHomeId) return;
+
+  pendingLayoutRoomFloorName = activeFloorName;
+  selectedRoomId = null;
+  openActionModal("room");
+};
+
+const selectPlanItem = (roomId, kind, index) => {
+  selectedLayoutRoomId = roomId;
+  selectedPlanItem = { roomId, kind, index };
+  renderLayoutRoomPanel();
+
+  layoutCanvas.querySelectorAll(".layout-plan-item-selected").forEach((element) => {
+    element.classList.remove("layout-plan-item-selected");
+  });
+
+  const selector = `[data-room-id="${roomId}"] [data-plan-kind="${kind}"][data-plan-index="${index}"]`;
+  layoutCanvas.querySelector(selector)?.classList.add("layout-plan-item-selected");
+  updateLayoutControls();
+};
+
+const addOpeningToSelectedRoom = (type) => {
+  updateSelectedRoomLayout((layout) => {
+    layout.plan_features.openings = layout.plan_features.openings ?? [];
+    layout.plan_features.openings.push({ type, side: "bottom", offset: 50 });
+    return layout;
+  });
+};
+
+const getFixtureDefaults = (type) => {
+  const wide = new Set(["bath", "bed", "counter"]);
+  const tall = new Set(["shower"]);
+
+  return {
+    type,
+    x: 50,
+    y: 50,
+    width: wide.has(type) ? 28 : 10,
+    height: type === "counter" ? 8 : tall.has(type) ? 18 : wide.has(type) ? 24 : 10,
+  };
+};
+
+const addFixtureToSelectedRoom = (type) => {
+  updateSelectedRoomLayout((layout) => {
+    layout.plan_features.fixtures = layout.plan_features.fixtures ?? [];
+    layout.plan_features.fixtures.push(getFixtureDefaults(type));
+    return layout;
+  });
+};
+
+const removeSelectedPlanItem = () => {
+  if (!selectedPlanItem) return;
+
+  const { roomId, kind, index } = selectedPlanItem;
+  const current = getLayoutDraft(roomId);
+  if (!current) return;
+
+  const key = kind === "opening" ? "openings" : "fixtures";
+  const nextLayout = cloneJson(current);
+  nextLayout.plan_features[key].splice(index, 1);
+  layoutDrafts.set(roomId, nextLayout);
+  selectedPlanItem = null;
+  setLayoutDirty();
+  renderLayout();
 };
 
 const applyRoomElementLayout = (element, layout) => {
@@ -554,12 +885,124 @@ const startLayoutInteraction = (event, roomId, mode) => {
   window.addEventListener("pointerup", handlePointerUp);
 };
 
+const startOpeningInteraction = (event, roomId, openingIndex) => {
+  const roomElement = event.currentTarget.closest(".layout-room");
+  const roomRect = roomElement.getBoundingClientRect();
+
+  event.preventDefault();
+  event.stopPropagation();
+  selectPlanItem(roomId, "opening", openingIndex);
+
+  const handlePointerMove = (moveEvent) => {
+    const layout = cloneJson(getLayoutDraft(roomId));
+    const opening = layout.plan_features.openings[openingIndex];
+    const x = ((moveEvent.clientX - roomRect.left) / roomRect.width) * 100;
+    const y = ((moveEvent.clientY - roomRect.top) / roomRect.height) * 100;
+    const distances = [
+      { side: "top", value: Math.abs(y) },
+      { side: "right", value: Math.abs(100 - x) },
+      { side: "bottom", value: Math.abs(100 - y) },
+      { side: "left", value: Math.abs(x) },
+    ];
+    const nearest = distances.sort((a, b) => a.value - b.value)[0].side;
+
+    opening.side = nearest;
+    opening.offset = nearest === "top" || nearest === "bottom"
+      ? clamp(x, 8, 92)
+      : clamp(y, 8, 92);
+
+    layoutDrafts.set(roomId, layout);
+    setLayoutDirty();
+    renderLayout();
+    selectPlanItem(roomId, "opening", openingIndex);
+  };
+
+  const handlePointerUp = () => {
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+  };
+
+  window.addEventListener("pointermove", handlePointerMove);
+  window.addEventListener("pointerup", handlePointerUp);
+};
+
+const startFixtureInteraction = (event, roomId, fixtureIndex) => {
+  const roomElement = event.currentTarget.closest(".layout-room");
+  const roomRect = roomElement.getBoundingClientRect();
+
+  event.preventDefault();
+  event.stopPropagation();
+  selectPlanItem(roomId, "fixture", fixtureIndex);
+
+  const handlePointerMove = (moveEvent) => {
+    const layout = cloneJson(getLayoutDraft(roomId));
+    const fixture = layout.plan_features.fixtures[fixtureIndex];
+    fixture.x = clamp(((moveEvent.clientX - roomRect.left) / roomRect.width) * 100, 4, 92);
+    fixture.y = clamp(((moveEvent.clientY - roomRect.top) / roomRect.height) * 100, 4, 92);
+
+    layoutDrafts.set(roomId, layout);
+    setLayoutDirty();
+    renderLayout();
+    selectPlanItem(roomId, "fixture", fixtureIndex);
+  };
+
+  const handlePointerUp = () => {
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+  };
+
+  window.addEventListener("pointermove", handlePointerMove);
+  window.addEventListener("pointerup", handlePointerUp);
+};
+
+const createOpeningElement = (opening, roomId, index) => {
+  const element = document.createElement("span");
+  const side = ["top", "right", "bottom", "left"].includes(opening.side) ? opening.side : "bottom";
+  const offset = clamp(Number(opening.offset ?? 50), 8, 92);
+
+  element.className = `layout-opening layout-opening-${opening.type === "window" ? "window" : "door"} ${side}`;
+  element.dataset.planKind = "opening";
+  element.dataset.planIndex = String(index);
+  element.title = `Drag ${opening.type} along a wall`;
+
+  if (side === "top" || side === "bottom") {
+    element.style.left = `${offset}%`;
+  } else {
+    element.style.top = `${offset}%`;
+  }
+
+  element.addEventListener("pointerdown", (event) => startOpeningInteraction(event, roomId, index));
+  return element;
+};
+
+const createFixtureElement = (fixture, roomId, index) => {
+  const element = document.createElement("span");
+  const type = normalizeText(fixture.type || "fixture").replace(/[^a-z0-9-]/g, "-");
+
+  element.className = `layout-fixture fixture-${type}`;
+  element.dataset.planKind = "fixture";
+  element.dataset.planIndex = String(index);
+  element.style.left = `${clamp(Number(fixture.x ?? 50), 4, 92)}%`;
+  element.style.top = `${clamp(Number(fixture.y ?? 50), 4, 92)}%`;
+
+  if (fixture.width) element.style.width = `${clamp(Number(fixture.width), 8, 80)}%`;
+  if (fixture.height) element.style.height = `${clamp(Number(fixture.height), 8, 80)}%`;
+  element.dataset.label = String(fixture.type ?? "");
+  element.title = `Drag ${fixture.type}`;
+
+  element.addEventListener("pointerdown", (event) => startFixtureInteraction(event, roomId, index));
+  return element;
+};
+
 const createLayoutRoomElement = (room) => {
   const roomDocuments = getRoomDocuments(room.id);
   const roomEvents = getRoomEvents(room.id);
+  const layout = getLayoutDraft(room.id);
   const element = document.createElement("article");
+  const label = document.createElement("div");
   const title = document.createElement("strong");
   const meta = document.createElement("span");
+  const dimensions = document.createElement("span");
   const resizeHandle = document.createElement("span");
 
   element.className = "layout-room";
@@ -568,7 +1011,10 @@ const createLayoutRoomElement = (room) => {
   element.setAttribute("role", "button");
   element.setAttribute("aria-label", `${room.name} room layout`);
 
+  label.className = "layout-room-label";
   title.textContent = room.name;
+  dimensions.className = "layout-room-dimensions";
+  dimensions.textContent = layout.dimensions_label;
   meta.textContent = createStatLine([
     room.room_type,
     `${roomDocuments.length} docs`,
@@ -577,8 +1023,19 @@ const createLayoutRoomElement = (room) => {
   resizeHandle.className = "layout-resize-handle";
   resizeHandle.setAttribute("aria-hidden", "true");
 
-  applyRoomElementLayout(element, getLayoutDraft(room.id));
-  element.append(title, meta, resizeHandle);
+  applyRoomElementLayout(element, layout);
+  label.append(title, dimensions, meta);
+  element.append(label);
+
+  for (const [index, opening] of (layout.plan_features.openings ?? []).entries()) {
+    element.append(createOpeningElement(opening, room.id, index));
+  }
+
+  for (const [index, fixture] of (layout.plan_features.fixtures ?? []).entries()) {
+    element.append(createFixtureElement(fixture, room.id, index));
+  }
+
+  element.append(resizeHandle);
 
   element.addEventListener("pointerdown", (event) => startLayoutInteraction(event, room.id, "move"));
   resizeHandle.addEventListener("pointerdown", (event) => startLayoutInteraction(event, room.id, "resize"));
@@ -601,11 +1058,27 @@ const renderLayout = () => {
   }
 
   const homeRooms = getHomeRooms(home.id);
+  const hasSavedLayout = homeHasSavedLayout(home.id);
+  const floors = getHomeFloors(home.id);
 
   layoutHomeMeta.textContent = home.property_type;
   layoutHomeTitle.textContent = home.address;
   syncLayoutDrafts(home.id);
+  if (!floors.some((floor) => floor.name === activeFloorName)) {
+    activeFloorName = floors[0]?.name ?? "Main Floor";
+  }
+  layoutEditorStarted = layoutEditorStarted || hasSavedLayout;
+  updateLayoutModeVisibility();
+  renderLayoutFloors();
+  renderRoomPlacementOptions();
   layoutCanvas.replaceChildren();
+
+  if (!layoutEditorStarted && !hasSavedLayout) {
+    selectedLayoutRoomId = null;
+    renderLayoutRoomPanel();
+    updateLayoutControls();
+    return;
+  }
 
   if (!homeRooms.length) {
     renderEmptyState(layoutCanvas, "No rooms yet", "Add rooms first, then arrange them into a simple home layout.");
@@ -615,11 +1088,21 @@ const renderLayout = () => {
     return;
   }
 
-  if (!selectedLayoutRoomId || !homeRooms.some((room) => room.id === selectedLayoutRoomId)) {
-    selectedLayoutRoomId = homeRooms[0].id;
+  const floorRooms = homeRooms.filter((room) => getLayoutDraft(room.id)?.floor_name === activeFloorName);
+
+  if (!floorRooms.length) {
+    renderEmptyState(layoutCanvas, `${activeFloorName} has no rooms yet`, "Use the controls above to add an existing room to this floor, or create a new room directly here.");
+    selectedLayoutRoomId = null;
+    renderLayoutRoomPanel();
+    updateLayoutControls();
+    return;
   }
 
-  for (const room of homeRooms) {
+  if (!selectedLayoutRoomId || !floorRooms.some((room) => room.id === selectedLayoutRoomId)) {
+    selectedLayoutRoomId = floorRooms[0].id;
+  }
+
+  for (const room of floorRooms) {
     layoutCanvas.append(createLayoutRoomElement(room));
   }
 
@@ -633,11 +1116,110 @@ const resetLayoutDrafts = () => {
   const homeRooms = getHomeRooms(selectedHomeId);
   layoutDrafts = new Map(homeRooms.map((room, index) => [
     room.id,
-    normalizeLayout(null, index, homeRooms.length),
+    cloneJson(getBaselineDraft(room.id) ?? normalizeLayout(null, index, homeRooms.length, room)),
   ]));
   layoutDraftHomeId = selectedHomeId;
+  layoutEditorStarted = true;
   layoutDirty = true;
-  setStatus(layoutStatus, "Layout reset. Save when it feels right.");
+  setStatus(layoutStatus, "Reset to the saved model. Save to keep this as the active layout.");
+  renderLayout();
+};
+
+const buildStarterFloorPlan = () => {
+  if (!selectedHomeId) return;
+
+  const homeRooms = getHomeRooms(selectedHomeId);
+  const floorNames = getDefaultFloorNames(layoutFloorCountInput.value);
+  activeFloorName = floorNames[0];
+  layoutDrafts = new Map(homeRooms.map((room, index) => [
+    room.id,
+    normalizeLayout({ floor_name: UNASSIGNED_FLOOR }, index, homeRooms.length, room),
+  ]));
+  baselineDrafts = new Map(Array.from(layoutDrafts, ([roomId, layout]) => [
+    roomId,
+    { ...cloneJson(layout), baseline_source: "manual" },
+  ]));
+  layoutDraftHomeId = selectedHomeId;
+  layoutEditorStarted = true;
+  layoutDirty = true;
+  baselineDirty = true;
+  setStatus(layoutStatus, "Floors created. Add rooms to each floor when ready.");
+  renderLayout();
+};
+
+const ensureHomeFloors = async (floorNames) => {
+  const existingFloors = homeFloors.filter((floor) => floor.home_id === selectedHomeId);
+  const existingNames = new Set(existingFloors.map((floor) => floor.name));
+
+  roomLayouts
+    .filter((layout) => layout.home_id === selectedHomeId && layout.floor_name && layout.floor_name !== UNASSIGNED_FLOOR)
+    .forEach((layout) => existingNames.add(layout.floor_name));
+
+  const rows = floorNames
+    .filter((name) => !existingNames.has(name))
+    .map((name, index) => ({
+      owner_id: currentUser.id,
+      home_id: selectedHomeId,
+      name,
+      sort_order: existingFloors.length + index,
+    }));
+
+  if (!rows.length) return;
+
+  const { error } = await supabase.from("home_floors").insert(rows);
+  if (error) {
+    if (isMissingTableError(error, "home_floors")) {
+      homeFloors.push(...rows.map((row, index) => ({
+        id: `local-${Date.now()}-${index}`,
+        created_at: new Date().toISOString(),
+        ...row,
+      })));
+      setStatus(layoutStatus, "Floors are available for this session. Run latest schema.sql to persist floor names.", "error");
+      return;
+    }
+
+    throw error;
+  }
+
+  await loadHomeFloors();
+};
+
+const handleBuildStarterFloorPlan = async () => {
+  const floorNames = getDefaultFloorNames(layoutFloorCountInput.value);
+
+  try {
+    await ensureHomeFloors(floorNames);
+    buildStarterFloorPlan();
+  } catch (error) {
+    setStatus(layoutStatus, `Could not create floors: ${error.message}`, "error");
+  }
+};
+
+const handleAddFloor = async () => {
+  const floorName = newFloorNameInput.value.trim();
+  if (!selectedHomeId || !floorName) return;
+
+  try {
+    await ensureHomeFloors([floorName]);
+    newFloorNameInput.value = "";
+    activeFloorName = floorName;
+    setStatus(layoutStatus, `${floorName} added.`);
+    renderLayout();
+  } catch (error) {
+    setStatus(layoutStatus, `Could not add floor: ${error.message}`, "error");
+  }
+};
+
+const setCurrentLayoutAsBaseline = () => {
+  if (!selectedHomeId) return;
+
+  baselineDrafts = new Map(Array.from(layoutDrafts, ([roomId, layout]) => [
+    roomId,
+    { ...cloneJson(layout), baseline_source: "manual" },
+  ]));
+  baselineDirty = true;
+  layoutDirty = true;
+  setStatus(layoutStatus, "Current layout is now the reset model. Save to keep it.");
   renderLayout();
 };
 
@@ -645,23 +1227,45 @@ const saveLayout = async () => {
   if (!selectedHomeId || !roomLayoutsAvailable) return;
 
   const homeRooms = getHomeRooms(selectedHomeId);
-  const rows = homeRooms.map((room) => {
-    const layout = getLayoutDraft(room.id);
-    return {
-      owner_id: currentUser.id,
-      home_id: selectedHomeId,
-      room_id: room.id,
-      x: Number(layout.x.toFixed(2)),
-      y: Number(layout.y.toFixed(2)),
-      width: Number(layout.width.toFixed(2)),
-      height: Number(layout.height.toFixed(2)),
-      updated_at: new Date().toISOString(),
-    };
-  });
+  const rows = homeRooms
+    .map((room) => {
+      const layout = getLayoutDraft(room.id);
+      if (!layout || layout.floor_name === UNASSIGNED_FLOOR) return null;
+
+      const savedBaseline = getBaselineDraft(room.id);
+      const baseline = !savedBaseline || savedBaseline.floor_name === UNASSIGNED_FLOOR ? layout : savedBaseline;
+      return {
+        owner_id: currentUser.id,
+        home_id: selectedHomeId,
+        room_id: room.id,
+        x: Number(layout.x.toFixed(2)),
+        y: Number(layout.y.toFixed(2)),
+        width: Number(layout.width.toFixed(2)),
+        height: Number(layout.height.toFixed(2)),
+        floor_name: layout.floor_name,
+        dimensions_label: layout.dimensions_label,
+        plan_features: layout.plan_features,
+        baseline_layout: baseline,
+        baseline_features: baseline.plan_features,
+        baseline_source: baseline.baseline_source || "manual",
+        updated_at: new Date().toISOString(),
+      };
+    })
+    .filter(Boolean);
 
   saveLayoutButton.disabled = true;
   saveLayoutButton.textContent = "Saving...";
   setStatus(layoutStatus, "Saving layout...");
+
+  if (!rows.length) {
+    layoutDirty = false;
+    baselineDirty = false;
+    saveLayoutButton.textContent = "Save layout";
+    setStatus(layoutStatus, "Floors saved. Add rooms to a floor when ready.", "success");
+    updateLayoutControls();
+    renderLayout();
+    return;
+  }
 
   const { error } = await supabase.from("room_layouts").upsert(rows, { onConflict: "room_id" });
 
@@ -680,6 +1284,7 @@ const saveLayout = async () => {
   }
 
   layoutDirty = false;
+  baselineDirty = false;
   setStatus(layoutStatus, "Layout saved.", "success");
   await loadRoomLayouts();
   renderLayout();
@@ -1411,6 +2016,9 @@ const navigateToHome = (homeId) => {
 const navigateToLayout = (homeId) => {
   selectedHomeId = homeId;
   selectedRoomId = null;
+  selectedPlanItem = null;
+  activeFloorName = getHomeFloors(homeId)[0]?.name ?? "Main Floor";
+  layoutEditorStarted = homeHasFloors(homeId);
   layoutDirty = false;
   layoutDraftHomeId = null;
   renderLayout();
@@ -1672,6 +2280,26 @@ const loadRooms = async () => {
   rooms = data ?? [];
 };
 
+const loadHomeFloors = async () => {
+  const { data, error } = await supabase
+    .from("home_floors")
+    .select("id,home_id,name,sort_order,created_at")
+    .eq("owner_id", currentUser.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error, "home_floors")) {
+      homeFloors = [];
+      return;
+    }
+
+    throw error;
+  }
+
+  homeFloors = data ?? [];
+};
+
 const loadRoomLayouts = async () => {
   if (!roomLayoutsAvailable) {
     roomLayouts = [];
@@ -1680,7 +2308,7 @@ const loadRoomLayouts = async () => {
 
   const { data, error } = await supabase
     .from("room_layouts")
-    .select("id,home_id,room_id,x,y,width,height,created_at,updated_at")
+    .select("id,home_id,room_id,x,y,width,height,floor_name,dimensions_label,plan_features,baseline_layout,baseline_features,baseline_source,created_at,updated_at")
     .eq("owner_id", currentUser.id)
     .order("updated_at", { ascending: false });
 
@@ -1757,6 +2385,7 @@ const refreshDashboard = async () => {
   try {
     await loadHomes();
     await loadRooms();
+    await loadHomeFloors();
     await loadRoomLayouts();
     await loadDocuments();
     await loadTimelineEvents();
@@ -1955,6 +2584,7 @@ const handleCreateHome = async (event) => {
 
 const handleCreateRoom = async (event) => {
   event.preventDefault();
+  const targetLayoutFloorName = pendingLayoutRoomFloorName;
   setStatus(roomStatus, "");
   setFormDisabled(roomForm, true);
   saveRoomButton.textContent = "Creating...";
@@ -1977,10 +2607,19 @@ const handleCreateRoom = async (event) => {
     closeModal();
     setStatus(roomStatus, "Room created successfully!", "success");
     await refreshDashboard();
-    showView("room");
+
+    if (targetLayoutFloorName) {
+      activeFloorName = targetLayoutFloorName;
+      layoutEditorStarted = true;
+      moveRoomToActiveFloor(data.id);
+      showView("layout");
+    } else {
+      showView("room");
+    }
   } catch (error) {
     setStatus(roomStatus, error.message, "error");
   } finally {
+    pendingLayoutRoomFloorName = null;
     setFormDisabled(roomForm, false);
     saveRoomButton.textContent = "Create room";
     populateModalSelects();
@@ -2347,6 +2986,22 @@ document.getElementById("backToHomeFromLayout").addEventListener("click", () => 
 });
 saveLayoutButton.addEventListener("click", saveLayout);
 resetLayoutButton.addEventListener("click", resetLayoutDrafts);
+buildFloorPlanButton.addEventListener("click", handleBuildStarterFloorPlan);
+setLayoutBaselineButton.addEventListener("click", setCurrentLayoutAsBaseline);
+addFloorButton.addEventListener("click", handleAddFloor);
+newFloorNameInput.addEventListener("input", updateLayoutControls);
+layoutAddRoomSelect.addEventListener("change", updateLayoutControls);
+addRoomToFloorButton.addEventListener("click", handleAddRoomToFloor);
+createRoomOnFloorButton.addEventListener("click", openCreateRoomOnActiveFloor);
+layoutRoomFloorSelect.addEventListener("change", updateSelectedRoomFloor);
+layoutDimensionsInput.addEventListener("change", updateSelectedRoomDimensions);
+layoutDimensionsInput.addEventListener("blur", updateSelectedRoomDimensions);
+addDoorButton.addEventListener("click", () => addOpeningToSelectedRoom("door"));
+addWindowButton.addEventListener("click", () => addOpeningToSelectedRoom("window"));
+removeSelectedPlanItemButton.addEventListener("click", removeSelectedPlanItem);
+document.querySelectorAll("[data-fixture]").forEach((button) => {
+  button.addEventListener("click", () => addFixtureToSelectedRoom(button.dataset.fixture));
+});
 openSelectedRoomButton.addEventListener("click", () => {
   if (selectedLayoutRoomId) navigateToRoom(selectedLayoutRoomId);
 });
