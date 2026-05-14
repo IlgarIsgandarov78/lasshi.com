@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -26,7 +26,40 @@
     </section>
 
     <section id="homesView" class="app-view active">
-      <div class="view-toolbar">
+      <div id="firstUseOnboarding" class="first-use-onboarding hidden">
+        <div class="onboarding-copy">
+          <p class="eyebrow">Welcome to Lasshi</p>
+          <h2>Let's create the record your home deserves.</h2>
+          <p>
+            Start with the basics. Lasshi will prepare a clean structure for rooms,
+            documents, renovations, and future proof.
+          </p>
+          <div class="onboarding-actions">
+            <button id="startFirstHome" class="primary-button" type="button">Create my home record</button>
+          </div>
+        </div>
+
+        <div class="onboarding-preview" aria-label="Preview of a prepared home record">
+          <div class="preview-header">
+            <span>Starter record</span>
+            <strong>Prepared in seconds</strong>
+          </div>
+          <div class="preview-rooms" aria-hidden="true">
+            <span>Kitchen</span>
+            <span>Bathroom</span>
+            <span>Living room</span>
+            <span>Bedroom</span>
+            <span>Utility</span>
+          </div>
+          <div class="preview-checklist">
+            <span>Room structure ready</span>
+            <span>Document areas ready</span>
+            <span>Timeline ready</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="homesToolbar" class="view-toolbar">
         <div>
           <h2>Homes</h2>
           <p class="muted">Choose a property to manage rooms, documentation, and history.</p>
@@ -52,6 +85,8 @@
           <button id="openTimelineModal" class="secondary-button" type="button">Add event</button>
         </div>
       </div>
+
+      <section id="homeNextSteps" class="next-steps-panel hidden" aria-label="Recommended next steps"></section>
 
       <div class="stats-grid">
         <div class="stat-tile">
@@ -171,9 +206,13 @@
         <h2 id="homeModalTitle">Add home</h2>
         <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
       </div>
+      <div id="homeModalIntro" class="modal-intro hidden">
+        <p class="eyebrow">Step 1 of 1</p>
+        <p>Tell us just enough to set up the record. You can refine everything later.</p>
+      </div>
       <form id="homeForm" class="form">
         <label>
-          Address
+          Home name or address
           <input id="homeAddress" type="text" placeholder="Exampleveien 12" autocomplete="street-address" required />
         </label>
         <label>
@@ -442,6 +481,6 @@
     </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=9"></script>
+  <script type="module" src="dashboard.js?v=10"></script>
 </body>
 </html>

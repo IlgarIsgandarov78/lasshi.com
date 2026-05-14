@@ -2,6 +2,7 @@ import { supabase } from "./supabase.js";
 
 const pageTitle = document.getElementById("pageTitle");
 const logoutButton = document.getElementById("logout");
+const searchPanel = document.querySelector(".search-panel");
 
 const views = {
   homes: document.getElementById("homesView"),
@@ -10,6 +11,9 @@ const views = {
 };
 
 const homesGrid = document.getElementById("homesGrid");
+const homesToolbar = document.getElementById("homesToolbar");
+const firstUseOnboarding = document.getElementById("firstUseOnboarding");
+const startFirstHomeButton = document.getElementById("startFirstHome");
 const globalSearchInput = document.getElementById("globalSearch");
 const clearSearchButton = document.getElementById("clearSearch");
 const searchResults = document.getElementById("searchResults");
@@ -22,6 +26,7 @@ const homeEventCount = document.getElementById("homeEventCount");
 const homeHealthScore = document.getElementById("homeHealthScore");
 const homeHealthSummary = document.getElementById("homeHealthSummary");
 const homeHealthList = document.getElementById("homeHealthList");
+const homeNextSteps = document.getElementById("homeNextSteps");
 const homeRoomsGrid = document.getElementById("homeRoomsGrid");
 const homeDocumentsList = document.getElementById("homeDocumentsList");
 const homeTimelineList = document.getElementById("homeTimelineList");
@@ -47,6 +52,8 @@ const modals = {
 };
 
 const homeForm = document.getElementById("homeForm");
+const homeModalTitle = document.getElementById("homeModalTitle");
+const homeModalIntro = document.getElementById("homeModalIntro");
 const homeStatus = document.getElementById("homeStatus");
 const saveHomeButton = document.getElementById("saveHome");
 
@@ -112,6 +119,15 @@ let selectedHomeId = null;
 let selectedRoomId = null;
 let generatedJobBriefText = "";
 let timelineEvidenceAvailable = true;
+let isOnboardingHomeCreate = false;
+
+const starterRooms = [
+  { name: "Kitchen", room_type: "Kitchen" },
+  { name: "Bathroom", room_type: "Bathroom" },
+  { name: "Living room", room_type: "Living room" },
+  { name: "Bedroom", room_type: "Bedroom" },
+  { name: "Utility", room_type: "Utility room" },
+];
 
 const setStatus = (element, message, type = "") => {
   const className = `status-message ${type}`.trim();
@@ -206,12 +222,20 @@ const showView = (viewName) => {
   }
 
   pageTitle.textContent = {
-    homes: "Your homes",
+    homes: homes.length ? "Your homes" : "Welcome",
     home: "Home detail",
     room: "Room detail",
   }[viewName];
 
   window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+const setHomeCreationMode = (isOnboarding = false) => {
+  isOnboardingHomeCreate = isOnboarding;
+  modals.home.classList.toggle("onboarding-modal", isOnboarding);
+  homeModalIntro.classList.toggle("hidden", !isOnboarding);
+  homeModalTitle.textContent = isOnboarding ? "Create your home record" : "Add home";
+  saveHomeButton.textContent = isOnboarding ? "Prepare my record" : "Create home";
 };
 
 const openModal = (name) => {
@@ -246,6 +270,83 @@ const renderEmptyState = (container, title, detail = "") => {
   empty.append(heading);
   if (detail) empty.append(copy);
   container.append(empty);
+};
+
+const createNextStepButton = (label, detail, action, isPrimary = false) => {
+  const button = document.createElement("button");
+  const title = document.createElement("strong");
+  const copy = document.createElement("span");
+
+  button.className = `next-step ${isPrimary ? "next-step-primary" : ""}`.trim();
+  button.type = "button";
+  title.textContent = label;
+  copy.textContent = detail;
+  button.append(title, copy);
+  button.addEventListener("click", action);
+
+  return button;
+};
+
+const renderHomeNextSteps = (homeId) => {
+  const homeRooms = getHomeRooms(homeId);
+  const homeDocuments = getHomeDocuments(homeId);
+  const homeEvents = getHomeEvents(homeId);
+  const steps = [];
+
+  if (!homeRooms.length) {
+    steps.push(createNextStepButton(
+      "Add a room",
+      "Give documents and notes a precise place to live.",
+      () => openActionModal("room"),
+      true
+    ));
+  }
+
+  if (!homeDocuments.length) {
+    steps.push(createNextStepButton(
+      "Upload first document",
+      "Add a photo, PDF, receipt, manual, or drawing.",
+      () => openActionModal("document"),
+      Boolean(homeRooms.length)
+    ));
+  }
+
+  if (!homeEvents.length) {
+    steps.push(createNextStepButton(
+      "Add renovation history",
+      "Record what changed, when, and why it matters.",
+      () => openActionModal("timeline")
+    ));
+  }
+
+  steps.push(createNextStepButton(
+    "Generate a job brief",
+    "Turn your record into a clear handoff for a professional.",
+    () => openActionModal("jobBrief")
+  ));
+
+  if (homeDocuments.length && homeEvents.length && homeRooms.length) {
+    homeNextSteps.classList.add("hidden");
+    homeNextSteps.replaceChildren();
+    return;
+  }
+
+  const copy = document.createElement("div");
+  const eyebrow = document.createElement("p");
+  const title = document.createElement("h3");
+  const text = document.createElement("p");
+  const actions = document.createElement("div");
+
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "Next best steps";
+  title.textContent = "Your home record is ready. Now make it useful.";
+  text.textContent = "Add one piece of proof or one important change. Small inputs make the record valuable quickly.";
+  actions.className = "next-step-actions";
+  actions.append(...steps.slice(0, 3));
+  copy.append(eyebrow, title, text);
+
+  homeNextSteps.classList.remove("hidden");
+  homeNextSteps.replaceChildren(copy, actions);
 };
 
 const createStatLine = (items) => items.filter(Boolean).join(" - ");
@@ -422,9 +523,14 @@ const createRoomCard = (room) => {
 
 const renderHomes = () => {
   homesGrid.replaceChildren();
+  const hasHomes = Boolean(homes.length);
 
-  if (!homes.length) {
-    renderEmptyState(homesGrid, "No homes yet", "Add your first property to start building its digital memory.");
+  firstUseOnboarding.classList.toggle("hidden", hasHomes);
+  homesToolbar.classList.toggle("hidden", !hasHomes);
+  homesGrid.classList.toggle("hidden", !hasHomes);
+  searchPanel.classList.toggle("hidden", !hasHomes);
+
+  if (!hasHomes) {
     return;
   }
 
@@ -490,6 +596,7 @@ const renderHomeDetail = () => {
   homeDocumentCount.textContent = homeDocuments.length;
   homeEventCount.textContent = homeEvents.length;
   renderHomeHealth(home.id);
+  renderHomeNextSteps(home.id);
 
   homeRoomsGrid.replaceChildren();
   if (homeRooms.length) {
@@ -1135,6 +1242,7 @@ const populateModalSelects = () => {
 
 const preselectModalContext = (name) => {
   if (selectedHomeId) {
+    const firstHomeRoom = getHomeRooms(selectedHomeId)[0];
     roomHomeSelect.value = selectedHomeId;
     documentHomeSelect.value = selectedHomeId;
     timelineHomeSelect.value = selectedHomeId;
@@ -1144,7 +1252,10 @@ const preselectModalContext = (name) => {
     populateRoomSelect(timelineRoomSelect, selectedHomeId, true);
     populateRoomSelect(infrastructureRoomSelect, selectedHomeId, false);
     populateRoomSelect(jobBriefRoomSelect, selectedHomeId, true);
+    if (name === "document" && firstHomeRoom) documentRoomSelect.value = firstHomeRoom.id;
+    if (name === "infrastructure" && firstHomeRoom) infrastructureRoomSelect.value = firstHomeRoom.id;
     populateTimelineDocumentSelect();
+    populateInfrastructureDocumentSelect();
   }
 
   if (selectedRoomId) {
@@ -1172,13 +1283,25 @@ const preselectModalContext = (name) => {
   }
 };
 
-const openActionModal = (name) => {
+const openActionModal = (name, options = {}) => {
   clearModalStatuses();
+  if (name === "home") setHomeCreationMode(Boolean(options.onboarding));
   if (name === "jobBrief") resetJobBriefOutput();
   populateModalSelects();
   preselectModalContext(name);
   updateModalDisabledStates();
   openModal(name);
+};
+
+const createStarterRooms = async (homeId) => {
+  const rows = starterRooms.map((room) => ({
+    ...room,
+    home_id: homeId,
+    owner_id: currentUser.id,
+  }));
+
+  const { error } = await supabase.from("rooms").insert(rows);
+  if (error) throw error;
 };
 
 const loadHomes = async () => {
@@ -1412,9 +1535,11 @@ const setFormDisabled = (form, disabled) => {
 
 const handleCreateHome = async (event) => {
   event.preventDefault();
+  const shouldCreateStarterRooms = isOnboardingHomeCreate;
+  let starterRoomError = null;
   setStatus(homeStatus, "");
   setFormDisabled(homeForm, true);
-  saveHomeButton.textContent = "Creating...";
+  saveHomeButton.textContent = shouldCreateStarterRooms ? "Preparing..." : "Creating...";
 
   try {
     const payload = {
@@ -1429,17 +1554,29 @@ const handleCreateHome = async (event) => {
     const { data, error } = await supabase.from("homes").insert(payload).select("id").single();
     if (error) throw error;
 
+    if (shouldCreateStarterRooms) {
+      try {
+        await createStarterRooms(data.id);
+      } catch (error) {
+        starterRoomError = error;
+      }
+    }
+
     selectedHomeId = data.id;
     homeForm.reset();
     closeModal();
     setStatus(homeStatus, "Home created successfully!", "success");
     await refreshDashboard();
     showView("home");
+
+    if (starterRoomError) {
+      showActionError(`Home created, but starter rooms could not be prepared: ${starterRoomError.message}`);
+    }
   } catch (error) {
     setStatus(homeStatus, error.message, "error");
   } finally {
     setFormDisabled(homeForm, false);
-    saveHomeButton.textContent = "Create home";
+    saveHomeButton.textContent = isOnboardingHomeCreate ? "Prepare my record" : "Create home";
   }
 };
 
@@ -1807,6 +1944,7 @@ const initDashboard = async () => {
   showView("homes");
 };
 
+startFirstHomeButton.addEventListener("click", () => openActionModal("home", { onboarding: true }));
 document.getElementById("openHomeModal").addEventListener("click", () => openActionModal("home"));
 document.getElementById("openRoomModal").addEventListener("click", () => openActionModal("room"));
 document.getElementById("openJobBriefModal").addEventListener("click", () => openActionModal("jobBrief"));

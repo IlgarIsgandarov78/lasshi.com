@@ -738,6 +738,225 @@ button:disabled {
   display: block;
 }
 
+.first-use-onboarding {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.82fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: center;
+  min-height: calc(100vh - 9rem);
+  padding: clamp(1.5rem, 5vw, 4rem) 0;
+}
+
+.onboarding-copy h2 {
+  max-width: 12ch;
+  margin: 0;
+  color: #111827;
+  font-size: clamp(3rem, 7vw, 6.1rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.onboarding-copy p:not(.eyebrow) {
+  max-width: 38rem;
+  margin: 1rem 0 0;
+  color: #475467;
+  font-size: clamp(1.04rem, 1.6vw, 1.28rem);
+  line-height: 1.55;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.6rem;
+}
+
+.onboarding-actions .primary-button {
+  min-height: 3rem;
+  padding-inline: 1.1rem;
+}
+
+.onboarding-preview {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid rgba(203, 211, 220, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(22, 32, 51, 0.14);
+}
+
+.onboarding-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 5px solid var(--accent);
+  pointer-events: none;
+}
+
+.preview-header,
+.preview-checklist,
+.next-step-actions {
+  display: flex;
+}
+
+.preview-header {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.preview-header strong {
+  color: var(--accent);
+}
+
+.preview-rooms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.preview-rooms span {
+  display: grid;
+  place-items: center;
+  min-height: 5.3rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: #344054;
+  font-weight: 850;
+}
+
+.preview-rooms span:first-child {
+  grid-row: span 2;
+  min-height: 11.25rem;
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.preview-rooms span:nth-child(2) {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.preview-rooms span:last-child {
+  grid-column: 1 / -1;
+  min-height: 4.2rem;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.preview-checklist {
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.preview-checklist span {
+  position: relative;
+  padding: 0.72rem 0.8rem 0.72rem 2.1rem;
+  border-radius: 8px;
+  background: #f7f8f5;
+  color: #344054;
+  font-weight: 800;
+}
+
+.preview-checklist span::before {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--accent);
+  transform: translateY(-50%);
+}
+
+.modal-intro {
+  margin: -0.35rem 0 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: #f7f8f5;
+}
+
+.modal-intro p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.onboarding-modal {
+  width: min(100%, 560px);
+}
+
+.next-steps-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(203, 211, 220, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.next-steps-panel h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.next-steps-panel p:not(.eyebrow) {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.next-step-actions {
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.next-step {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 4.4rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.next-step:hover {
+  border-color: var(--border-strong);
+  background: #eef3f7;
+}
+
+.next-step-primary {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: #eff6ff;
+}
+
+.next-step strong {
+  font-size: 0.98rem;
+}
+
+.next-step span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -1207,6 +1426,37 @@ button:disabled {
   .app-shell {
     width: min(100% - 1rem, 1120px);
     padding-top: 1rem;
+  }
+
+  .first-use-onboarding,
+  .next-steps-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .first-use-onboarding {
+    min-height: auto;
+    padding-top: 1rem;
+  }
+
+  .onboarding-copy h2 {
+    font-size: clamp(2.55rem, 14vw, 4rem);
+  }
+
+  .onboarding-actions,
+  .onboarding-actions button {
+    width: 100%;
+  }
+
+  .preview-rooms {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-rooms span,
+  .preview-rooms span:first-child,
+  .preview-rooms span:last-child {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 4.2rem;
   }
 
   .action-row,
