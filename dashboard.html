@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -12,7 +12,11 @@
       <p class="eyebrow">Lasshi</p>
       <h1 id="pageTitle">Your homes</h1>
     </div>
-    <button id="logout" class="ghost-button" type="button">Log out</button>
+    <div class="header-actions">
+      <button id="openAssignmentModal" class="ghost-button" type="button">New assignment</button>
+      <button id="openContractorsModal" class="ghost-button" type="button">Share rooms</button>
+      <button id="logout" class="ghost-button" type="button">Log out</button>
+    </div>
   </header>
 
   <main class="app-shell">
@@ -80,6 +84,8 @@
         </div>
         <div class="action-row">
           <button id="openRoomModal" class="primary-button" type="button">Add room</button>
+          <button id="openHomeAssignmentModal" class="secondary-button" type="button">New assignment</button>
+          <button id="openHomeContractorModal" class="secondary-button" type="button">Share rooms</button>
           <button id="openLayoutView" class="secondary-button" type="button">Open layout</button>
           <button id="openJobBriefModal" class="secondary-button" type="button">Generate job brief</button>
           <button id="openDocumentModal" class="secondary-button" type="button">Upload document</button>
@@ -121,6 +127,27 @@
           <p class="muted">Open a room to see its documentation and history.</p>
         </div>
         <div id="homeRoomsGrid" class="room-grid"></div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <h3>Trade worker contacts</h3>
+            <p class="muted">Accept trade worker requests and keep trusted professionals ready for assignments.</p>
+          </div>
+        </div>
+        <div id="homeTradeContactsList" class="stack-list"></div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <h3>Assignments</h3>
+            <p class="muted">Send structured work packs, chat, track status, and approve completed work.</p>
+          </div>
+          <button id="openHomeAssignmentModalSecondary" class="secondary-button compact-button" type="button">New assignment</button>
+        </div>
+        <div id="homeAssignmentsList" class="stack-list"></div>
       </section>
 
       <div class="split-grid">
@@ -304,6 +331,91 @@
           <div id="roomDetailTimeline" class="stack-list"></div>
         </section>
       </div>
+    </section>
+
+    <section id="assignmentView" class="app-view">
+      <button id="backToHomeFromAssignment" class="text-button" type="button">Back to home</button>
+
+      <div class="view-hero">
+        <div>
+          <p id="assignmentDetailMeta" class="eyebrow">Assignment</p>
+          <h2 id="assignmentDetailTitle">Assignment</h2>
+          <p id="assignmentDetailInfo" class="muted"></p>
+        </div>
+        <div class="action-row">
+          <button id="approveAssignment" class="primary-button" type="button">Approve work</button>
+          <button id="generateAssignmentReport" class="secondary-button" type="button">Generate report</button>
+          <button id="openAssignmentRoom" class="secondary-button" type="button">Open room</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <strong id="assignmentStatusValue">Pending</strong>
+          <span>status</span>
+        </div>
+        <div class="stat-tile">
+          <strong id="assignmentMediaCount">0</strong>
+          <span>photos/files</span>
+        </div>
+        <div class="stat-tile">
+          <strong id="assignmentMessageCount">0</strong>
+          <span>messages</span>
+        </div>
+      </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <h3>Work pack</h3>
+            <p class="muted">Scope, room context, measurements, known risks, and useful documents.</p>
+          </div>
+        </div>
+        <div id="assignmentContextPanel" class="assignment-context-grid"></div>
+      </section>
+
+      <div class="split-grid">
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Chat</h3>
+          </div>
+          <div id="assignmentMessagesList" class="chat-list"></div>
+          <form id="assignmentMessageForm" class="form inline-message-form">
+            <input id="assignmentMessageInput" type="text" placeholder="Write a message" required />
+            <button id="sendAssignmentMessage" class="primary-button compact-button" type="submit">Send</button>
+          </form>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Notifications</h3>
+          </div>
+          <div id="assignmentNotificationsList" class="stack-list"></div>
+        </section>
+      </div>
+
+      <div class="split-grid">
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Documentation</h3>
+          </div>
+          <div id="assignmentMediaList" class="stack-list"></div>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <h3>Materials</h3>
+          </div>
+          <div id="assignmentMaterialsList" class="stack-list"></div>
+        </section>
+      </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <h3>Progress updates</h3>
+        </div>
+        <div id="assignmentUpdatesList" class="stack-list"></div>
+      </section>
     </section>
   </main>
 
@@ -536,6 +648,121 @@
       </form>
     </section>
 
+    <section id="contractorAccessModal" class="modal wide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="contractorAccessModalTitle">
+      <div class="modal-header">
+        <h2 id="contractorAccessModalTitle">Share rooms with contractor</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="contractorAccessForm" class="form">
+        <div class="form-grid">
+          <label>
+            Home
+            <select id="contractorAccessHomeId" required></select>
+          </label>
+          <label>
+            Trade
+            <select id="contractorTradeType" required>
+              <option value="">Select trade</option>
+              <option value="Electrician">Electrician</option>
+              <option value="Plumber">Plumber</option>
+              <option value="Carpenter">Carpenter</option>
+              <option value="HVAC">HVAC</option>
+              <option value="Painter">Painter</option>
+              <option value="Inspector">Inspector</option>
+              <option value="General contractor">General contractor</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-grid">
+          <label>
+            Contractor email
+            <input id="contractorEmail" type="email" placeholder="pro@example.com" required />
+          </label>
+          <label>
+            Name or company
+            <input id="contractorName" type="text" placeholder="Optional" />
+          </label>
+        </div>
+        <label>
+          Rooms
+          <select id="contractorRoomIds" multiple size="5" required></select>
+        </label>
+        <label>
+          Scope of work
+          <input id="contractorWorkScope" type="text" placeholder="Example: Replace outlets and inspect bathroom fan" required />
+        </label>
+        <label>
+          Access note
+          <textarea id="contractorAccessNote" rows="3" placeholder="Arrival details, safety notes, where to start, or what not to touch"></textarea>
+        </label>
+        <div class="form-grid">
+          <label>
+            Starts
+            <input id="contractorStartsOn" type="date" />
+          </label>
+          <label>
+            Ends
+            <input id="contractorEndsOn" type="date" />
+          </label>
+        </div>
+        <button id="saveContractorAccess" class="primary-button" type="submit">Share selected rooms</button>
+        <p id="contractorAccessStatus" class="status-message" role="status"></p>
+      </form>
+    </section>
+
+    <section id="assignmentModal" class="modal wide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="assignmentModalTitle">
+      <div class="modal-header">
+        <h2 id="assignmentModalTitle">Create assignment</h2>
+        <button class="icon-button" data-close-modal type="button" aria-label="Close">x</button>
+      </div>
+      <form id="assignmentForm" class="form">
+        <div class="form-grid">
+          <label>
+            Home
+            <select id="assignmentHomeId" required></select>
+          </label>
+          <label>
+            Room
+            <select id="assignmentRoomId" required></select>
+          </label>
+        </div>
+        <label>
+          Trade worker
+          <select id="assignmentContactId" required></select>
+        </label>
+        <label>
+          Assignment title
+          <input id="assignmentTitleInput" type="text" placeholder="Example: Replace bathroom fan" required />
+        </label>
+        <label>
+          What needs to be done?
+          <textarea id="assignmentDescriptionInput" rows="4" placeholder="Describe the work, preferred result, access details, and anything the worker should know." required></textarea>
+        </label>
+        <label>
+          Extra context
+          <textarea id="assignmentContextInput" rows="3" placeholder="Safety notes, measurements, documents to review, or what not to touch"></textarea>
+        </label>
+        <div class="form-grid">
+          <label>
+            Priority
+            <select id="assignmentPriorityInput" required>
+              <option value="Normal">Normal</option>
+              <option value="Low">Low</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </label>
+          <label>
+            Due date
+            <input id="assignmentDueDateInput" type="date" />
+          </label>
+        </div>
+        <button id="saveAssignment" class="primary-button" type="submit">Send assignment</button>
+        <p id="assignmentStatus" class="status-message" role="status"></p>
+      </form>
+    </section>
+
     <section id="jobBriefModal" class="modal wide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="jobBriefModalTitle">
       <div class="modal-header">
         <h2 id="jobBriefModalTitle">Generate job brief</h2>
@@ -588,6 +815,6 @@
     </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=12"></script>
+  <script type="module" src="dashboard.js?v=14"></script>
 </body>
 </html>

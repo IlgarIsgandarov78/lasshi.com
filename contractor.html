@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lasshi Contractor Workspace</title>
+  <link rel="stylesheet" href="styles.css?v=14" />
+</head>
+<body class="dashboard-page contractor-page">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Lasshi Pro</p>
+      <h1 id="contractorPageTitle">Assigned work</h1>
+    </div>
+    <div class="header-actions">
+      <button id="refreshContractorWorkspace" class="ghost-button" type="button">Refresh</button>
+      <button id="logout" class="ghost-button" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="app-shell contractor-shell">
+    <section class="view-hero contractor-hero">
+      <div>
+        <p id="contractorProfileMeta" class="eyebrow">Contractor</p>
+        <h2 id="contractorGreeting">Your workspace</h2>
+        <p class="muted">Review assigned rooms, hidden infrastructure, documents, and history before work starts.</p>
+      </div>
+      <div class="action-row">
+        <button id="copyWorkPack" class="secondary-button" type="button" disabled>Copy work pack</button>
+        <button id="generateMobileReport" class="secondary-button" type="button" disabled>Report</button>
+      </div>
+    </section>
+
+    <section class="contractor-mobile-panel">
+      <details>
+        <summary>Profile and contacts</summary>
+        <div class="mobile-panel-grid">
+          <form id="contractorProfileForm" class="form">
+            <label>
+              Company
+              <input id="profileCompanyName" type="text" placeholder="Company name" />
+            </label>
+            <label>
+              Trade
+              <input id="profileTradeType" type="text" placeholder="Electrician, plumber, carpenter..." />
+            </label>
+            <label>
+              Certifications
+              <textarea id="profileCertifications" rows="2" placeholder="Certificates, authorization, license numbers"></textarea>
+            </label>
+            <label>
+              Contact info
+              <input id="profilePhone" type="text" placeholder="Phone number" />
+            </label>
+            <button id="saveContractorProfile" class="secondary-button" type="submit">Save profile</button>
+          </form>
+
+          <form id="contactRequestForm" class="form">
+            <label>
+              Homeowner email
+              <input id="contactRequestEmail" type="email" placeholder="customer@example.com" required />
+            </label>
+            <label>
+              Message
+              <textarea id="contactRequestMessage" rows="2" placeholder="Hi, I can help with the job we discussed."></textarea>
+            </label>
+            <button id="sendContactRequest" class="primary-button" type="submit">Send contact request</button>
+          </form>
+        </div>
+      </details>
+    </section>
+
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <strong id="assignedRoomCount">0</strong>
+        <span>assigned rooms</span>
+      </div>
+      <div class="stat-tile">
+        <strong id="riskNoteCount">0</strong>
+        <span>risk notes</span>
+      </div>
+      <div class="stat-tile">
+        <strong id="sharedDocumentCount">0</strong>
+        <span>shared documents</span>
+      </div>
+    </div>
+
+    <section class="search-panel contractor-search">
+      <div>
+        <label for="assignmentSearch" class="search-label">Search work</label>
+        <input id="assignmentSearch" type="search" placeholder="Search homes, rooms, scope, risks, and documents" autocomplete="off" />
+      </div>
+      <button id="clearAssignmentSearch" class="secondary-button compact-button" type="button">Clear</button>
+    </section>
+
+    <div class="contractor-workspace">
+      <aside class="contractor-assignment-panel">
+        <div class="section-heading compact-heading">
+          <div>
+            <h3>Assignments</h3>
+            <p class="muted">Rooms shared with your contractor email.</p>
+          </div>
+        </div>
+        <div id="assignmentsList" class="stack-list"></div>
+      </aside>
+
+      <section id="assignmentDetail" class="contractor-detail"></section>
+    </div>
+
+    <nav class="trade-bottom-actions" aria-label="Assignment actions">
+      <button id="mobileAcceptTask" type="button" disabled>Accept</button>
+      <button id="mobileStartTask" type="button" disabled>Start</button>
+      <button id="mobileWaitingTask" type="button" disabled>Waiting</button>
+      <button id="mobileCompleteTask" type="button" disabled>Complete</button>
+    </nav>
+
+    <p id="contractorStatus" class="status-message" role="status"></p>
+  </main>
+
+  <script type="module" src="contractor.js?v=14"></script>
+</body>
+</html>

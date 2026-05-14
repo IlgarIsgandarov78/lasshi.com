@@ -6,7 +6,7 @@
 
   <title>Lasshi - The Living Technical Record of Your Home</title>
 
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body class="landing-page">
   <header class="site-header">
@@ -246,6 +246,45 @@
                 minlength="6"
               />
             </label>
+            <fieldset class="role-fieldset">
+              <legend>I am signing up as</legend>
+              <div class="role-options">
+                <label class="role-option">
+                  <input type="radio" name="accountType" value="consumer" checked />
+                  <span>
+                    <strong>Homeowner</strong>
+                    <small>Manage my own home record</small>
+                  </span>
+                </label>
+                <label class="role-option">
+                  <input type="radio" name="accountType" value="contractor" />
+                  <span>
+                    <strong>Contractor</strong>
+                    <small>Work on shared rooms</small>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+            <div id="contractorProfileFields" class="contractor-profile-fields hidden">
+              <label>
+                Trade
+                <select id="registerTradeType">
+                  <option value="">Select trade</option>
+                  <option value="Electrician">Electrician</option>
+                  <option value="Plumber">Plumber</option>
+                  <option value="Carpenter">Carpenter</option>
+                  <option value="HVAC">HVAC</option>
+                  <option value="Painter">Painter</option>
+                  <option value="Inspector">Inspector</option>
+                  <option value="General contractor">General contractor</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label>
+                Company
+                <input id="registerCompanyName" type="text" placeholder="Company name" />
+              </label>
+            </div>
             <button type="submit">Create account</button>
           </form>
         </div>
@@ -253,6 +292,6 @@
     </section>
   </main>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=13"></script>
 </body>
 </html>
