@@ -4,72 +4,254 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Lasshi - Digital Home Twin</title>
+  <title>Lasshi - The Living Technical Record of Your Home</title>
 
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
-<body>
-  <div class="container">
-    <h1 class="logo">Lasshi</h1>
-    <p class="tagline">The digital memory of your home</p>
+<body class="landing-page">
+  <header class="site-header">
+    <a class="brand-mark" href="#" aria-label="Lasshi home">
+      <span class="brand-symbol" aria-hidden="true">L</span>
+      <span>Lasshi</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#problem">Problem</a>
+      <a href="#solution">Solution</a>
+      <a href="#how-it-works">How it works</a>
+    </nav>
+    <a class="nav-login" href="#start" onclick="showLogin()">Login</a>
+  </header>
 
-    <div class="card">
-      <div class="tabs">
-        <button type="button" class="tab active" onclick="showLogin()">Login</button>
-        <button type="button" class="tab" onclick="showRegister()">Register</button>
+  <main>
+    <section class="hero-section">
+      <div class="hero-copy">
+        <p class="eyebrow">Digital home record</p>
+        <h1>The living technical record of your home.</h1>
+        <p class="hero-subtitle">
+          Documents, renovations, and layout - all structured, visual, and ready for
+          professionals, insurers, buyers, and authorities.
+        </p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#start" onclick="showRegister()">Create your home record</a>
+          <a class="secondary-button" href="#how-it-works">See how it works</a>
+        </div>
       </div>
 
-      <form id="loginForm" class="form">
-        <label>
-          Email
-          <input
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            placeholder="Your password"
-            minlength="6"
-            required
-          />
-        </label>
-        <button type="submit">Login</button>
-      </form>
+      <div class="home-record-visual" aria-label="Preview of a structured home record">
+        <div class="record-topbar">
+          <span>Home record</span>
+          <strong>Ready to share</strong>
+        </div>
+        <div class="record-grid">
+          <div class="mini-plan" aria-hidden="true">
+            <span class="room kitchen">Kitchen</span>
+            <span class="room bath">Bath</span>
+            <span class="room living">Living</span>
+            <span class="room utility">Utility</span>
+          </div>
+          <div class="record-stack">
+            <div class="record-row">
+              <span class="row-icon row-icon-blue"></span>
+              <div>
+                <strong>Electrical</strong>
+                <p>Invoices, changes, proof</p>
+              </div>
+            </div>
+            <div class="record-row">
+              <span class="row-icon row-icon-teal"></span>
+              <div>
+                <strong>Plumbing</strong>
+                <p>Photos, repairs, manuals</p>
+              </div>
+            </div>
+            <div class="record-row">
+              <span class="row-icon row-icon-gold"></span>
+              <div>
+                <strong>Renovation pack</strong>
+                <p>12 files export-ready</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="record-timeline">
+          <span></span>
+          <div>
+            <strong>May 2026</strong>
+            <p>Kitchen renovation documented with photos, supplier details, and warranty files.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <form id="registerForm" class="form hidden">
-        <label>
-          Full name
-          <input
-            type="text"
-            placeholder="John Doe"
-            required
-          />
-        </label>
-        <label>
-          Email
-          <input
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            placeholder="At least 6 characters"
-            required
-            minlength="6"
-          />
-        </label>
-        <button type="submit">Create account</button>
-      </form>
-    </div>
-  </div>
+    <section class="landing-section problem-band" id="problem">
+      <div class="section-inner two-column">
+        <div>
+          <p class="eyebrow">The familiar problem</p>
+          <h2>Home documentation is scattered and fragile.</h2>
+        </div>
+        <div class="problem-list">
+          <p>Documents spread across emails, PDFs, photos, and random folders.</p>
+          <p>No clear overview of what changed, when it changed, and who did the work.</p>
+          <p>Stress when a tradesperson, insurer, buyer, or authority asks for proof.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section" id="solution">
+      <div class="section-inner">
+        <div class="section-heading-block">
+          <p class="eyebrow">The Lasshi solution</p>
+          <h2>Lasshi keeps your home understandable.</h2>
+        </div>
+
+        <div class="pillar-grid">
+          <article class="pillar-card">
+            <span class="pillar-number">01</span>
+            <h3>Structured documentation</h3>
+            <p>Everything sits in one logical home structure, so the record is useful long after the work is done.</p>
+          </article>
+          <article class="pillar-card">
+            <span class="pillar-number">02</span>
+            <h3>Visual home layout</h3>
+            <p>A simple 2D layout helps you find rooms, systems, documents, and changes instantly.</p>
+          </article>
+          <article class="pillar-card">
+            <span class="pillar-number">03</span>
+            <h3>Ready-to-share records</h3>
+            <p>Create renovation packs, sale-ready dossiers, and authority-friendly exports when it matters.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section difference-band">
+      <div class="section-inner difference-layout">
+        <div>
+          <p class="eyebrow">Built for real homes</p>
+          <h2>Not a CAD tool. Not another storage folder.</h2>
+        </div>
+        <div class="difference-points">
+          <span>Simple enough for homeowners</span>
+          <span>Structured enough for professionals</span>
+          <span>Designed to grow with the home over time</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section" id="how-it-works">
+      <div class="section-inner">
+        <div class="section-heading-block">
+          <p class="eyebrow">How it works</p>
+          <h2>From first room to shareable record in three steps.</h2>
+        </div>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <span>1</span>
+            <h3>Create your home</h3>
+            <p>Rooms, systems, and folders are created in a clear structure from the start.</p>
+          </article>
+          <article class="step-card">
+            <span>2</span>
+            <h3>Add documents and updates</h3>
+            <p>Store photos, invoices, manuals, renovation notes, and technical proof in context.</p>
+          </article>
+          <article class="step-card">
+            <span>3</span>
+            <h3>View, share, export</h3>
+            <p>Prepare the right record for a tradesperson, insurer, buyer, or authority.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section trust-band">
+      <div class="section-inner trust-layout">
+        <div>
+          <p class="eyebrow">Long-term trust</p>
+          <h2>Your home history stays with the home.</h2>
+          <p>
+            Preserve the timeline of changes, keep versions available, and decide exactly
+            who can see each part of the record.
+          </p>
+        </div>
+        <div class="trust-list" aria-label="Trust features">
+          <span>Timeline of changes</span>
+          <span>Versions preserved</span>
+          <span>Controlled sharing</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section signup-band" id="start">
+      <div class="section-inner signup-layout">
+        <div>
+          <p class="eyebrow">Start your record</p>
+          <h2>Create a calmer way to manage your home.</h2>
+          <p class="muted">
+            Start with one home record. Add documents, rooms, and renovation history as your home evolves.
+          </p>
+        </div>
+
+        <div class="card auth-card">
+          <div class="tabs">
+            <button type="button" class="tab" onclick="showLogin()">Login</button>
+            <button type="button" class="tab active" onclick="showRegister()">Register</button>
+          </div>
+
+          <form id="loginForm" class="form hidden">
+            <label>
+              Email
+              <input
+                type="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                placeholder="Your password"
+                minlength="6"
+                required
+              />
+            </label>
+            <button type="submit">Login</button>
+          </form>
+
+          <form id="registerForm" class="form">
+            <label>
+              Full name
+              <input
+                type="text"
+                placeholder="John Doe"
+                required
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                placeholder="At least 6 characters"
+                required
+                minlength="6"
+              />
+            </label>
+            <button type="submit">Create account</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
