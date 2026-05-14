@@ -7,6 +7,7 @@ const searchPanel = document.querySelector(".search-panel");
 const views = {
   homes: document.getElementById("homesView"),
   home: document.getElementById("homeView"),
+  layout: document.getElementById("layoutView"),
   room: document.getElementById("roomView"),
 };
 
@@ -30,6 +31,19 @@ const homeNextSteps = document.getElementById("homeNextSteps");
 const homeRoomsGrid = document.getElementById("homeRoomsGrid");
 const homeDocumentsList = document.getElementById("homeDocumentsList");
 const homeTimelineList = document.getElementById("homeTimelineList");
+
+const layoutHomeMeta = document.getElementById("layoutHomeMeta");
+const layoutHomeTitle = document.getElementById("layoutHomeTitle");
+const layoutCanvas = document.getElementById("layoutCanvas");
+const layoutStatus = document.getElementById("layoutStatus");
+const saveLayoutButton = document.getElementById("saveLayout");
+const resetLayoutButton = document.getElementById("resetLayout");
+const layoutRoomTitle = document.getElementById("layoutRoomTitle");
+const layoutRoomMeta = document.getElementById("layoutRoomMeta");
+const layoutRoomStats = document.getElementById("layoutRoomStats");
+const openSelectedRoomButton = document.getElementById("openSelectedRoom");
+const uploadSelectedRoomDocumentButton = document.getElementById("uploadSelectedRoomDocument");
+const addSelectedRoomNoteButton = document.getElementById("addSelectedRoomNote");
 
 const roomDetailHome = document.getElementById("roomDetailHome");
 const roomDetailTitle = document.getElementById("roomDetailTitle");
@@ -111,12 +125,18 @@ const jobBriefOutput = document.getElementById("jobBriefOutput");
 let currentUser = null;
 let homes = [];
 let rooms = [];
+let roomLayouts = [];
 let documents = [];
 let timelineEvents = [];
 let timelineDocumentLinks = [];
 let infrastructureItems = [];
 let selectedHomeId = null;
 let selectedRoomId = null;
+let selectedLayoutRoomId = null;
+let layoutDrafts = new Map();
+let layoutDraftHomeId = null;
+let layoutDirty = false;
+let roomLayoutsAvailable = true;
 let generatedJobBriefText = "";
 let timelineEvidenceAvailable = true;
 let isOnboardingHomeCreate = false;
@@ -181,6 +201,22 @@ const getEventDocuments = (eventId) => {
   const eventDocumentIds = new Set(getEventDocumentLinks(eventId).map((link) => link.document_id));
   return documents.filter((doc) => eventDocumentIds.has(doc.id));
 };
+const getRoomLayout = (roomId) => roomLayouts.find((layout) => layout.room_id === roomId);
+const getLayoutDraft = (roomId) => layoutDrafts.get(roomId);
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const isMissingTableError = (error, tableName) => {
+  const message = error?.message ?? "";
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    (
+      message.includes(tableName) &&
+      (message.includes("Could not find") || message.includes("does not exist") || message.includes("schema cache") || message.includes("relation"))
+    )
+  );
+};
 
 const formatSquareMeters = (value) => {
   const number = Number(value);
@@ -224,6 +260,7 @@ const showView = (viewName) => {
   pageTitle.textContent = {
     homes: homes.length ? "Your homes" : "Welcome",
     home: "Home detail",
+    layout: "Home layout",
     room: "Room detail",
   }[viewName];
 
@@ -300,6 +337,13 @@ const renderHomeNextSteps = (homeId) => {
       () => openActionModal("room"),
       true
     ));
+  } else {
+    steps.push(createNextStepButton(
+      "Open home layout",
+      "Arrange rooms into a simple visual map.",
+      () => navigateToLayout(homeId),
+      !homeDocuments.length
+    ));
   }
 
   if (!homeDocuments.length) {
@@ -347,6 +391,298 @@ const renderHomeNextSteps = (homeId) => {
 
   homeNextSteps.classList.remove("hidden");
   homeNextSteps.replaceChildren(copy, actions);
+};
+
+const getDefaultLayout = (index, total) => {
+  const columns = total <= 1 ? 1 : total <= 4 ? 2 : 3;
+  const rows = Math.ceil(total / columns);
+  const gap = 3;
+  const width = (100 - gap * (columns + 1)) / columns;
+  const height = (100 - gap * (rows + 1)) / rows;
+  const column = index % columns;
+  const row = Math.floor(index / columns);
+
+  return {
+    x: gap + column * (width + gap),
+    y: gap + row * (height + gap),
+    width,
+    height,
+  };
+};
+
+const normalizeLayout = (layout, index, total) => {
+  const fallback = getDefaultLayout(index, total);
+  const width = clamp(Number(layout?.width ?? fallback.width), 12, 96);
+  const height = clamp(Number(layout?.height ?? fallback.height), 10, 96);
+
+  return {
+    x: clamp(Number(layout?.x ?? fallback.x), 0, 100 - width),
+    y: clamp(Number(layout?.y ?? fallback.y), 0, 100 - height),
+    width,
+    height,
+  };
+};
+
+const syncLayoutDrafts = (homeId, force = false) => {
+  const homeRooms = getHomeRooms(homeId);
+
+  if (force || layoutDraftHomeId !== homeId || (!layoutDirty && layoutDrafts.size !== homeRooms.length)) {
+    layoutDrafts = new Map(homeRooms.map((room, index) => [
+      room.id,
+      normalizeLayout(getRoomLayout(room.id), index, homeRooms.length),
+    ]));
+    layoutDraftHomeId = homeId;
+    layoutDirty = false;
+  }
+
+  for (const [index, room] of homeRooms.entries()) {
+    if (!layoutDrafts.has(room.id)) {
+      layoutDrafts.set(room.id, normalizeLayout(getRoomLayout(room.id), index, homeRooms.length));
+      layoutDirty = true;
+    }
+  }
+};
+
+const updateLayoutControls = () => {
+  const homeRooms = selectedHomeId ? getHomeRooms(selectedHomeId) : [];
+  saveLayoutButton.disabled = !roomLayoutsAvailable || !homeRooms.length || !layoutDirty;
+  resetLayoutButton.disabled = !homeRooms.length;
+
+  if (!roomLayoutsAvailable) {
+    setStatus(layoutStatus, "Layout saving needs the room_layouts table. Run the latest schema.sql in Supabase.", "error");
+  } else if (!layoutDirty && layoutStatus.classList.contains("error")) {
+    setStatus(layoutStatus, "");
+  }
+};
+
+const selectLayoutRoom = (roomId) => {
+  selectedLayoutRoomId = roomId;
+  renderLayoutRoomPanel();
+
+  layoutCanvas.querySelectorAll(".layout-room").forEach((element) => {
+    element.classList.toggle("selected", element.dataset.roomId === roomId);
+  });
+};
+
+const renderLayoutRoomPanel = () => {
+  const room = rooms.find((item) => item.id === selectedLayoutRoomId);
+  const disabled = !room;
+
+  openSelectedRoomButton.disabled = disabled;
+  uploadSelectedRoomDocumentButton.disabled = disabled;
+  addSelectedRoomNoteButton.disabled = disabled;
+  layoutRoomStats.replaceChildren();
+
+  if (!room) {
+    layoutRoomTitle.textContent = "Choose a room";
+    layoutRoomMeta.textContent = "Select a room on the layout to see its record.";
+    return;
+  }
+
+  const roomDocuments = getRoomDocuments(room.id);
+  const roomEvents = getRoomEvents(room.id);
+  const roomInfrastructure = getRoomInfrastructure(room.id);
+
+  layoutRoomTitle.textContent = room.name;
+  layoutRoomMeta.textContent = createStatLine([room.room_type, getHomeAddress(room.home_id)]);
+
+  [
+    ["Documents", roomDocuments.length],
+    ["History", roomEvents.length],
+    ["Infrastructure", roomInfrastructure.length],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("span");
+    item.innerHTML = `<strong>${value}</strong>${label}`;
+    layoutRoomStats.append(item);
+  });
+};
+
+const setLayoutDirty = () => {
+  layoutDirty = true;
+  setStatus(layoutStatus, "Unsaved layout changes.");
+  updateLayoutControls();
+};
+
+const applyRoomElementLayout = (element, layout) => {
+  element.style.left = `${layout.x}%`;
+  element.style.top = `${layout.y}%`;
+  element.style.width = `${layout.width}%`;
+  element.style.height = `${layout.height}%`;
+};
+
+const startLayoutInteraction = (event, roomId, mode) => {
+  if (event.button !== 0) return;
+
+  const roomElement = event.currentTarget.closest(".layout-room");
+  const canvasRect = layoutCanvas.getBoundingClientRect();
+  const initialLayout = { ...getLayoutDraft(roomId) };
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let didMove = false;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const handlePointerMove = (moveEvent) => {
+    const dx = ((moveEvent.clientX - startX) / canvasRect.width) * 100;
+    const dy = ((moveEvent.clientY - startY) / canvasRect.height) * 100;
+    const nextLayout = { ...initialLayout };
+
+    didMove = didMove || Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3;
+
+    if (mode === "move") {
+      nextLayout.x = clamp(initialLayout.x + dx, 0, 100 - initialLayout.width);
+      nextLayout.y = clamp(initialLayout.y + dy, 0, 100 - initialLayout.height);
+    } else {
+      nextLayout.width = clamp(initialLayout.width + dx, 12, 100 - initialLayout.x);
+      nextLayout.height = clamp(initialLayout.height + dy, 10, 100 - initialLayout.y);
+    }
+
+    layoutDrafts.set(roomId, nextLayout);
+    applyRoomElementLayout(roomElement, nextLayout);
+    setLayoutDirty();
+  };
+
+  const handlePointerUp = () => {
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+
+    if (!didMove) selectLayoutRoom(roomId);
+  };
+
+  window.addEventListener("pointermove", handlePointerMove);
+  window.addEventListener("pointerup", handlePointerUp);
+};
+
+const createLayoutRoomElement = (room) => {
+  const roomDocuments = getRoomDocuments(room.id);
+  const roomEvents = getRoomEvents(room.id);
+  const element = document.createElement("article");
+  const title = document.createElement("strong");
+  const meta = document.createElement("span");
+  const resizeHandle = document.createElement("span");
+
+  element.className = "layout-room";
+  element.dataset.roomId = room.id;
+  element.tabIndex = 0;
+  element.setAttribute("role", "button");
+  element.setAttribute("aria-label", `${room.name} room layout`);
+
+  title.textContent = room.name;
+  meta.textContent = createStatLine([
+    room.room_type,
+    `${roomDocuments.length} docs`,
+    `${roomEvents.length} events`,
+  ]);
+  resizeHandle.className = "layout-resize-handle";
+  resizeHandle.setAttribute("aria-hidden", "true");
+
+  applyRoomElementLayout(element, getLayoutDraft(room.id));
+  element.append(title, meta, resizeHandle);
+
+  element.addEventListener("pointerdown", (event) => startLayoutInteraction(event, room.id, "move"));
+  resizeHandle.addEventListener("pointerdown", (event) => startLayoutInteraction(event, room.id, "resize"));
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") navigateToRoom(room.id);
+  });
+  element.addEventListener("dblclick", () => navigateToRoom(room.id));
+
+  return element;
+};
+
+const renderLayout = () => {
+  const home = getSelectedHome();
+
+  if (!home) {
+    selectedHomeId = null;
+    selectedLayoutRoomId = null;
+    showView("homes");
+    return;
+  }
+
+  const homeRooms = getHomeRooms(home.id);
+
+  layoutHomeMeta.textContent = home.property_type;
+  layoutHomeTitle.textContent = home.address;
+  syncLayoutDrafts(home.id);
+  layoutCanvas.replaceChildren();
+
+  if (!homeRooms.length) {
+    renderEmptyState(layoutCanvas, "No rooms yet", "Add rooms first, then arrange them into a simple home layout.");
+    selectedLayoutRoomId = null;
+    renderLayoutRoomPanel();
+    updateLayoutControls();
+    return;
+  }
+
+  if (!selectedLayoutRoomId || !homeRooms.some((room) => room.id === selectedLayoutRoomId)) {
+    selectedLayoutRoomId = homeRooms[0].id;
+  }
+
+  for (const room of homeRooms) {
+    layoutCanvas.append(createLayoutRoomElement(room));
+  }
+
+  selectLayoutRoom(selectedLayoutRoomId);
+  updateLayoutControls();
+};
+
+const resetLayoutDrafts = () => {
+  if (!selectedHomeId) return;
+
+  const homeRooms = getHomeRooms(selectedHomeId);
+  layoutDrafts = new Map(homeRooms.map((room, index) => [
+    room.id,
+    normalizeLayout(null, index, homeRooms.length),
+  ]));
+  layoutDraftHomeId = selectedHomeId;
+  layoutDirty = true;
+  setStatus(layoutStatus, "Layout reset. Save when it feels right.");
+  renderLayout();
+};
+
+const saveLayout = async () => {
+  if (!selectedHomeId || !roomLayoutsAvailable) return;
+
+  const homeRooms = getHomeRooms(selectedHomeId);
+  const rows = homeRooms.map((room) => {
+    const layout = getLayoutDraft(room.id);
+    return {
+      owner_id: currentUser.id,
+      home_id: selectedHomeId,
+      room_id: room.id,
+      x: Number(layout.x.toFixed(2)),
+      y: Number(layout.y.toFixed(2)),
+      width: Number(layout.width.toFixed(2)),
+      height: Number(layout.height.toFixed(2)),
+      updated_at: new Date().toISOString(),
+    };
+  });
+
+  saveLayoutButton.disabled = true;
+  saveLayoutButton.textContent = "Saving...";
+  setStatus(layoutStatus, "Saving layout...");
+
+  const { error } = await supabase.from("room_layouts").upsert(rows, { onConflict: "room_id" });
+
+  saveLayoutButton.textContent = "Save layout";
+
+  if (error) {
+    if (isMissingTableError(error, "room_layouts")) {
+      roomLayoutsAvailable = false;
+      updateLayoutControls();
+      return;
+    }
+
+    setStatus(layoutStatus, `Could not save layout: ${error.message}`, "error");
+    updateLayoutControls();
+    return;
+  }
+
+  layoutDirty = false;
+  setStatus(layoutStatus, "Layout saved.", "success");
+  await loadRoomLayouts();
+  renderLayout();
 };
 
 const createStatLine = (items) => items.filter(Boolean).join(" - ");
@@ -1061,6 +1397,7 @@ const renderApp = () => {
   renderHomes();
 
   if (selectedHomeId) renderHomeDetail();
+  if (selectedHomeId) renderLayout();
   if (selectedRoomId) renderRoomDetail();
 };
 
@@ -1069,6 +1406,15 @@ const navigateToHome = (homeId) => {
   selectedRoomId = null;
   renderHomeDetail();
   showView("home");
+};
+
+const navigateToLayout = (homeId) => {
+  selectedHomeId = homeId;
+  selectedRoomId = null;
+  layoutDirty = false;
+  layoutDraftHomeId = null;
+  renderLayout();
+  showView("layout");
 };
 
 const navigateToRoom = (roomId) => {
@@ -1326,6 +1672,32 @@ const loadRooms = async () => {
   rooms = data ?? [];
 };
 
+const loadRoomLayouts = async () => {
+  if (!roomLayoutsAvailable) {
+    roomLayouts = [];
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("room_layouts")
+    .select("id,home_id,room_id,x,y,width,height,created_at,updated_at")
+    .eq("owner_id", currentUser.id)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    if (isMissingTableError(error, "room_layouts")) {
+      roomLayoutsAvailable = false;
+      roomLayouts = [];
+      return;
+    }
+
+    throw error;
+  }
+
+  roomLayoutsAvailable = true;
+  roomLayouts = data ?? [];
+};
+
 const loadDocuments = async () => {
   const { data, error } = await supabase
     .from("room_documents")
@@ -1385,6 +1757,7 @@ const refreshDashboard = async () => {
   try {
     await loadHomes();
     await loadRooms();
+    await loadRoomLayouts();
     await loadDocuments();
     await loadTimelineEvents();
     await loadInfrastructure();
@@ -1947,6 +2320,9 @@ const initDashboard = async () => {
 startFirstHomeButton.addEventListener("click", () => openActionModal("home", { onboarding: true }));
 document.getElementById("openHomeModal").addEventListener("click", () => openActionModal("home"));
 document.getElementById("openRoomModal").addEventListener("click", () => openActionModal("room"));
+document.getElementById("openLayoutView").addEventListener("click", () => {
+  if (selectedHomeId) navigateToLayout(selectedHomeId);
+});
 document.getElementById("openJobBriefModal").addEventListener("click", () => openActionModal("jobBrief"));
 document.getElementById("openDocumentModal").addEventListener("click", () => openActionModal("document"));
 document.getElementById("openTimelineModal").addEventListener("click", () => openActionModal("timeline"));
@@ -1964,6 +2340,29 @@ document.getElementById("backToHome").addEventListener("click", () => {
   selectedRoomId = null;
   renderHomeDetail();
   showView("home");
+});
+document.getElementById("backToHomeFromLayout").addEventListener("click", () => {
+  renderHomeDetail();
+  showView("home");
+});
+saveLayoutButton.addEventListener("click", saveLayout);
+resetLayoutButton.addEventListener("click", resetLayoutDrafts);
+openSelectedRoomButton.addEventListener("click", () => {
+  if (selectedLayoutRoomId) navigateToRoom(selectedLayoutRoomId);
+});
+uploadSelectedRoomDocumentButton.addEventListener("click", () => {
+  const room = rooms.find((item) => item.id === selectedLayoutRoomId);
+  if (!room) return;
+  selectedHomeId = room.home_id;
+  selectedRoomId = room.id;
+  openActionModal("document");
+});
+addSelectedRoomNoteButton.addEventListener("click", () => {
+  const room = rooms.find((item) => item.id === selectedLayoutRoomId);
+  if (!room) return;
+  selectedHomeId = room.home_id;
+  selectedRoomId = room.id;
+  openActionModal("infrastructure");
 });
 
 modalBackdrop.addEventListener("click", (event) => {

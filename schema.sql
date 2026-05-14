@@ -606,3 +606,107 @@ using (
       and homes.owner_id = auth.uid()
   )
 );
+
+create table if not exists public.room_layouts (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.homes(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  x numeric(6, 2) not null check (x >= 0 and x <= 100),
+  y numeric(6, 2) not null check (y >= 0 and y <= 100),
+  width numeric(6, 2) not null check (width > 0 and width <= 100),
+  height numeric(6, 2) not null check (height > 0 and height <= 100),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (room_id)
+);
+
+create index if not exists room_layouts_home_id_idx on public.room_layouts(home_id);
+create index if not exists room_layouts_room_id_idx on public.room_layouts(room_id);
+create index if not exists room_layouts_owner_id_idx on public.room_layouts(owner_id);
+
+alter table public.room_layouts enable row level security;
+
+drop policy if exists "Users can read layouts for their own homes" on public.room_layouts;
+create policy "Users can read layouts for their own homes"
+on public.room_layouts
+for select
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_layouts.room_id
+      and rooms.home_id = room_layouts.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create layouts for their own homes" on public.room_layouts;
+create policy "Users can create layouts for their own homes"
+on public.room_layouts
+for insert
+to authenticated
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_layouts.room_id
+      and rooms.home_id = room_layouts.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can update layouts for their own homes" on public.room_layouts;
+create policy "Users can update layouts for their own homes"
+on public.room_layouts
+for update
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_layouts.room_id
+      and rooms.home_id = room_layouts.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_layouts.room_id
+      and rooms.home_id = room_layouts.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can delete layouts for their own homes" on public.room_layouts;
+create policy "Users can delete layouts for their own homes"
+on public.room_layouts
+for delete
+to authenticated
+using (
+  auth.uid() = owner_id
+  and exists (
+    select 1
+    from public.rooms
+    join public.homes on homes.id = rooms.home_id
+    where rooms.id = room_layouts.room_id
+      and rooms.home_id = room_layouts.home_id
+      and rooms.owner_id = auth.uid()
+      and homes.owner_id = auth.uid()
+  )
+);

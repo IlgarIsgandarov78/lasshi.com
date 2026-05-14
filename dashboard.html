@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lasshi Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body class="dashboard-page">
   <header class="app-header">
@@ -80,6 +80,7 @@
         </div>
         <div class="action-row">
           <button id="openRoomModal" class="primary-button" type="button">Add room</button>
+          <button id="openLayoutView" class="secondary-button" type="button">Open layout</button>
           <button id="openJobBriefModal" class="secondary-button" type="button">Generate job brief</button>
           <button id="openDocumentModal" class="secondary-button" type="button">Upload document</button>
           <button id="openTimelineModal" class="secondary-button" type="button">Add event</button>
@@ -136,6 +137,43 @@
           </div>
           <div id="homeTimelineList" class="stack-list"></div>
         </section>
+      </div>
+    </section>
+
+    <section id="layoutView" class="app-view">
+      <button id="backToHomeFromLayout" class="text-button" type="button">Back to home</button>
+
+      <div class="layout-workspace">
+        <div class="layout-main">
+          <div class="view-hero layout-hero">
+            <div>
+              <p id="layoutHomeMeta" class="eyebrow">Home layout</p>
+              <h2 id="layoutHomeTitle">Layout</h2>
+              <p class="muted">Move and resize rooms to create a simple visual map of the home record.</p>
+            </div>
+            <div class="action-row">
+              <button id="saveLayout" class="primary-button" type="button">Save layout</button>
+              <button id="resetLayout" class="secondary-button" type="button">Reset layout</button>
+            </div>
+          </div>
+
+          <p id="layoutStatus" class="status-message" role="status"></p>
+          <div id="layoutCanvas" class="layout-canvas" aria-label="2D home layout"></div>
+        </div>
+
+        <aside class="layout-sidebar">
+          <div>
+            <p class="eyebrow">Selected room</p>
+            <h3 id="layoutRoomTitle">Choose a room</h3>
+            <p id="layoutRoomMeta" class="muted">Select a room on the layout to see its record.</p>
+          </div>
+          <div id="layoutRoomStats" class="layout-room-stats"></div>
+          <div class="layout-room-actions">
+            <button id="openSelectedRoom" class="primary-button" type="button" disabled>Open room record</button>
+            <button id="uploadSelectedRoomDocument" class="secondary-button" type="button" disabled>Upload document</button>
+            <button id="addSelectedRoomNote" class="secondary-button" type="button" disabled>Add infrastructure note</button>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -481,6 +519,6 @@
     </section>
   </div>
 
-  <script type="module" src="dashboard.js?v=10"></script>
+  <script type="module" src="dashboard.js?v=11"></script>
 </body>
 </html>
